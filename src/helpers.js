@@ -15,10 +15,8 @@ export const DEFAULT_TIERS = ["S", "A", "B", "C", "D"];
 
 export function emptyState() {
   const tabId = uid();
-  const catId = uid();
   return {
     tabs: [{ id: tabId, name: "My Collection" }],
-    catalogues: [{ id: catId, tabId, name: "General" }],
     lists: [],
     items: [],
   };

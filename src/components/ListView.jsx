@@ -159,7 +159,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
       {modal === "editList" && (
         <ListFormModal
           list={list}
-          catalogueId={list.catalogueId}
+          tabId={list.tabId}
           onSave={(updated) => { onUpdate(updated); setModal(null); }}
           onClose={() => setModal(null)}
         />

@@ -3,7 +3,7 @@ import { G, css } from "../styles";
 import { uid, DEFAULT_TIERS } from "../helpers";
 import Modal from "./Modal";
 
-export default function ListFormModal({ list, catalogueId, onSave, onClose }) {
+export default function ListFormModal({ list, tabId, onSave, onClose }) {
   const [name, setName] = useState(list?.name || "");
   const [type, setType] = useState(list?.type || "numbered");
   const [tiers, setTiers] = useState(
@@ -12,7 +12,7 @@ export default function ListFormModal({ list, catalogueId, onSave, onClose }) {
 
   const submit = () => {
     if (!name.trim()) return;
-    onSave({ id: list?.id || uid(), name: name.trim(), type, tiers, catalogueId });
+    onSave({ id: list?.id || uid(), name: name.trim(), type, tiers, tabId });
   };
 
   const addTier = () => setTiers((prev) => [...prev, { id: uid(), label: "New" }]);

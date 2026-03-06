@@ -3,7 +3,8 @@ import { dbGet, dbSet } from "./db";
 import { uid, emptyState } from "./helpers";
 import { G, css } from "./styles";
 import EditableText from "./components/EditableText";
-import CataloguePanel from "./components/CataloguePanel";
+import ListView from "./components/ListView";
+import ListFormModal from "./components/ListFormModal";
 import NameFormModal from "./components/NameFormModal";
 import ConfirmModal from "./components/ConfirmModal";
 
@@ -51,7 +52,7 @@ export default function App() {
   }
 
   const activeTab = state.tabs.find((t) => t.id === activeTabId) || state.tabs[0];
-  const tabCatalogues = state.catalogues.filter((c) => c.tabId === activeTabId);
+  const tabLists = state.lists.filter((l) => l.tabId === activeTabId);
 
   // ── Tab CRUD ──────────────────────────────────────────────────────────────
   const createTab = (name) => {
@@ -64,37 +65,16 @@ export default function App() {
     update((s) => ({ ...s, tabs: s.tabs.map((t) => (t.id === tab.id ? tab : t)) }));
 
   const deleteTab = (id) => {
-    const catIds = state.catalogues.filter((c) => c.tabId === id).map((c) => c.id);
-    const listIds = state.lists.filter((l) => catIds.includes(l.catalogueId)).map((l) => l.id);
+    const listIds = state.lists.filter((l) => l.tabId === id).map((l) => l.id);
     update((s) => ({
       ...s,
       tabs: s.tabs.filter((t) => t.id !== id),
-      catalogues: s.catalogues.filter((c) => c.tabId !== id),
-      lists: s.lists.filter((l) => !listIds.includes(l.id)),
+      lists: s.lists.filter((l) => l.tabId !== id),
       items: s.items.filter((it) => !listIds.includes(it.listId)),
     }));
     if (activeTabId === id) {
       setActiveTabId(state.tabs.find((t) => t.id !== id)?.id || null);
     }
-  };
-
-  // ── Catalogue CRUD ────────────────────────────────────────────────────────
-  const createCatalogue = (name) => {
-    const cat = { id: uid(), name, tabId: activeTabId };
-    update((s) => ({ ...s, catalogues: [...s.catalogues, cat] }));
-  };
-
-  const updateCatalogue = (cat) =>
-    update((s) => ({ ...s, catalogues: s.catalogues.map((c) => (c.id === cat.id ? cat : c)) }));
-
-  const deleteCatalogue = (id) => {
-    const listIds = state.lists.filter((l) => l.catalogueId === id).map((l) => l.id);
-    update((s) => ({
-      ...s,
-      catalogues: s.catalogues.filter((c) => c.id !== id),
-      lists: s.lists.filter((l) => l.catalogueId !== id),
-      items: s.items.filter((it) => !listIds.includes(it.listId)),
-    }));
   };
 
   // ── List CRUD ─────────────────────────────────────────────────────────────
@@ -161,28 +141,24 @@ export default function App() {
                 onSave={(n) => updateTab({ ...activeTab, name: n })}
                 style={{ fontSize: 26, letterSpacing: "0.06em", fontWeight: "normal" }}
               />
-              <button style={{ ...css.ghostBtn, fontSize: 11 }} onClick={() => setModal("newCatalogue")}>
-                + New catalogue
+              <button style={{ ...css.ghostBtn, fontSize: 11 }} onClick={() => setModal("newList")}>
+                + New list
               </button>
             </div>
 
-            {tabCatalogues.length === 0 && (
+            {tabLists.length === 0 && (
               <div style={{ color: G.textDim, fontStyle: "italic", fontSize: 13 }}>
-                No catalogues yet. Create one to start organising your lists.
+                No lists yet. Create one to get started.
               </div>
             )}
 
-            {tabCatalogues.map((cat) => (
-              <CataloguePanel
-                key={cat.id}
-                catalogue={cat}
-                lists={state.lists}
+            {tabLists.map((list) => (
+              <ListView
+                key={list.id}
+                list={list}
                 items={state.items}
-                onUpdateCat={updateCatalogue}
-                onDeleteCat={() => deleteCatalogue(cat.id)}
-                onCreateList={createList}
-                onUpdateList={updateList}
-                onDeleteList={deleteList}
+                onUpdate={updateList}
+                onDelete={() => deleteList(list.id)}
                 onItemCreate={createItem}
                 onItemUpdate={updateItem}
                 onItemDelete={deleteItem}
@@ -200,10 +176,10 @@ export default function App() {
           onClose={() => setModal(null)}
         />
       )}
-      {modal === "newCatalogue" && (
-        <NameFormModal
-          title="New Catalogue"
-          onSave={(n) => { createCatalogue(n); setModal(null); }}
+      {modal === "newList" && (
+        <ListFormModal
+          tabId={activeTabId}
+          onSave={(list) => { createList(list); setModal(null); }}
           onClose={() => setModal(null)}
         />
       )}
