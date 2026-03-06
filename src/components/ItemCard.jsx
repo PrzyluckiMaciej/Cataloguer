@@ -34,19 +34,22 @@ export default function ItemCard({
         {listType === "numbered" ? rank : "·"}
       </div>
 
-      {/* Thumbnail */}
-      {item.thumbnail
-        ? <img src={item.thumbnail} alt="" style={{ width: THUMB, height: THUMB, objectFit: "cover", flexShrink: 0, borderRight: `1px solid ${G.border}` }} />
-        : <div style={{ width: THUMB, height: THUMB, background: G.surfaceHigh, flexShrink: 0, borderRight: `1px solid ${G.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: G.textDim, fontSize: 11, letterSpacing: "0.1em" }}>NO IMAGE</div>
-      }
+      {/* Thumbnail — only rendered if present */}
+      {item.thumbnail && (
+        <img src={item.thumbnail} alt="" style={{ width: THUMB, height: THUMB, objectFit: "cover", flexShrink: 0, borderRight: `1px solid ${G.border}` }} />
+      )}
 
       {/* Info + actions */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "16px 18px", minWidth: 0 }}>
-        <span style={{ fontSize: 18, letterSpacing: "0.03em", lineHeight: 1.3, wordBreak: "break-word" }}>
+      <div style={{
+        flex: 1, display: "flex", flexDirection: "column", justifyContent: "center",
+        padding: item.thumbnail ? "16px 18px" : "10px 18px",
+        minWidth: 0, gap: 8,
+      }}>
+        <span style={{ fontSize: item.thumbnail ? 18 : 15, letterSpacing: "0.03em", lineHeight: 1.3, wordBreak: "break-word" }}>
           {item.name}
         </span>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        <div style={{ display: "flex", gap: 8 }}>
           {item.images?.length > 0 && (
             <button
               style={{ ...css.ghostBtn, fontSize: 12 }}
@@ -57,12 +60,12 @@ export default function ItemCard({
             </button>
           )}
           <button
-            style={css.ghostBtn}
+            style={{ ...css.ghostBtn, fontSize: 12 }}
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
             title="Edit"
           >✎ Edit</button>
           <button
-            style={{ ...css.ghostBtn, color: G.danger, borderColor: G.dangerDim }}
+            style={{ ...css.ghostBtn, fontSize: 12, color: G.danger, borderColor: G.dangerDim }}
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
             title="Delete"
           >✕ Delete</button>
