@@ -167,9 +167,14 @@ export default function App() {
                   <EditableText
                     value={activeTab.name}
                     onSave={(n) => updateTab({ ...activeTab, name: n })}
-                    style={{ fontSize: 26, letterSpacing: "0.06em", fontWeight: "normal" }}
+                    style={{ fontSize: 26, letterSpacing: "0.06em", fontWeight: "normal", cursor: "text" }}
                   />
-                  <button style={{ ...css.ghostBtn, fontSize: 11 }} onClick={() => setModal("newList")}>
+                  <button
+                    style={{ ...css.iconBtn(false), fontSize: 13, color: G.textDim }}
+                    onClick={() => setModal("renameTab")}
+                    title="Rename tab"
+                  >✎</button>
+                  <button style={{ ...css.ghostBtn, fontSize: 11, marginLeft: 4 }} onClick={() => setModal("newList")}>
                     + New list
                   </button>
                   {state.tabs.length > 1 && (
@@ -228,6 +233,14 @@ export default function App() {
       </div>
 
       {/* Global modals */}
+      {modal === "renameTab" && (
+        <NameFormModal
+          title="Rename Tab"
+          initial={activeTab.name}
+          onSave={(n) => { updateTab({ ...activeTab, name: n }); setModal(null); }}
+          onClose={() => setModal(null)}
+        />
+      )}
       {modal === "newTab" && (
         <NameFormModal
           title="New Tab"
