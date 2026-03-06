@@ -3,32 +3,43 @@ import { G, css } from "../styles";
 import ListFormModal from "./ListFormModal";
 import ConfirmModal from "./ConfirmModal";
 
-export default function ListCard({ list, itemCount, onSelect, onUpdate, onDelete }) {
+export default function ListCard({ list, itemCount, onSelect, onUpdate, onDelete, onDragStart, onDragOver, onDrop, onDragEnd, isDragging, isOver }) {
   const [modal, setModal] = useState(null);
 
   return (
     <div
+      draggable
+      onDragStart={(e) => { e.stopPropagation(); onDragStart(); }}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); onDragOver(); }}
+      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onDrop(); }}
+      onDragEnd={onDragEnd}
       style={{
-        background: G.surface,
+        background: isDragging ? G.surfaceHigh : G.surface,
         border: `1px solid ${G.border}`,
+        borderTop: isOver ? `2px solid ${G.accent}` : `1px solid ${G.border}`,
         marginBottom: 10,
         display: "flex",
         alignItems: "center",
         gap: 12,
         padding: "14px 16px",
         cursor: "pointer",
+        opacity: isDragging ? 0.4 : 1,
         transition: "background 0.12s, border-color 0.12s",
       }}
       onClick={onSelect}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = G.surfaceHigh;
-        e.currentTarget.style.borderColor = G.borderLight;
+        if (!isDragging) e.currentTarget.style.background = G.surfaceHigh;
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.background = G.surface;
-        e.currentTarget.style.borderColor = G.border;
+        if (!isDragging) e.currentTarget.style.background = G.surface;
       }}
     >
+      {/* Drag handle */}
+      <span
+        style={{ color: G.textDim, fontSize: 14, cursor: "grab", flexShrink: 0, padding: "0 2px", lineHeight: 1 }}
+        onClick={(e) => e.stopPropagation()}
+        title="Drag to reorder"
+      >⠿</span>
       {/* Type badge */}
       <span style={{
         fontSize: 10, letterSpacing: "0.15em", textTransform: "uppercase",

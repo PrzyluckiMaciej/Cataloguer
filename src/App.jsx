@@ -14,6 +14,8 @@ export default function App() {
   const [activeTabId, setActiveTabId] = useState(null);
   const [activeListId, setActiveListId] = useState(null);
   const [modal, setModal] = useState(null);
+  const [dragListIdx, setDragListIdx] = useState(null);
+  const [overListIdx, setOverListIdx] = useState(null);
   const saving = useRef(false);
 
   // Load from IndexedDB on mount
@@ -61,7 +63,7 @@ export default function App() {
 
   const activeTab = state.tabs.find((t) => t.id === activeTabId) || state.tabs[0];
   const activeList = activeListId ? state.lists.find((l) => l.id === activeListId) : null;
-  const tabLists = state.lists.filter((l) => l.tabId === activeTabId);
+  const tabLists = state.lists.filter((l) => l.tabId === activeTabId).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   // ── Tab CRUD ──────────────────────────────────────────────────────────────
   const createTab = (name) => {
@@ -86,7 +88,8 @@ export default function App() {
 
   // ── List CRUD ─────────────────────────────────────────────────────────────
   const createList = (list) => {
-    update((s) => ({ ...s, lists: [...s.lists, list] }));
+    const order = state.lists.filter((l) => l.tabId === activeTabId).length;
+    update((s) => ({ ...s, lists: [...s.lists, { ...list, order }] }));
     setActiveListId(list.id);
   };
 
@@ -102,7 +105,15 @@ export default function App() {
     if (activeListId === id) setActiveListId(null);
   };
 
-  // ── Item CRUD ─────────────────────────────────────────────────────────────
+  const handleListReorder = (fromIdx, toIdx) => {
+    if (fromIdx === null || fromIdx === toIdx) return;
+    const reordered = [...tabLists];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    reordered.forEach((l, i) => updateList({ ...l, order: i }));
+    setDragListIdx(null);
+    setOverListIdx(null);
+  };
   const createItem = (item) =>
     update((s) => ({ ...s, items: [...s.items, item] }));
 
@@ -181,7 +192,7 @@ export default function App() {
                     No lists yet. Create one to get started.
                   </div>
                 )}
-                {tabLists.map((list) => (
+                {tabLists.map((list, i) => (
                   <ListCard
                     key={list.id}
                     list={list}
@@ -189,6 +200,12 @@ export default function App() {
                     onSelect={() => setActiveListId(list.id)}
                     onUpdate={updateList}
                     onDelete={() => deleteList(list.id)}
+                    onDragStart={() => setDragListIdx(i)}
+                    onDragOver={() => setOverListIdx(i)}
+                    onDrop={() => handleListReorder(dragListIdx, i)}
+                    onDragEnd={() => { setDragListIdx(null); setOverListIdx(null); }}
+                    isDragging={dragListIdx === i}
+                    isOver={overListIdx === i}
                   />
                 ))}
               </>
