@@ -124,17 +124,9 @@ export default function App() {
         </div>
 
         {state.tabs.map((tab) => (
-          <div key={tab.id} style={{ display: "flex", alignItems: "center" }}>
-            <button style={css.tabBtn(tab.id === activeTabId)} onClick={() => switchTab(tab.id)}>
-              {tab.name}
-            </button>
-            {state.tabs.length > 1 && (
-              <button
-                style={{ ...css.iconBtn(true), fontSize: 10, padding: "0 4px", marginLeft: -4 }}
-                onClick={() => setModal({ type: "confirm", msg: `Delete tab "${tab.name}" and everything in it?`, fn: () => deleteTab(tab.id) })}
-              >✕</button>
-            )}
-          </div>
+          <button key={tab.id} style={css.tabBtn(tab.id === activeTabId)} onClick={() => switchTab(tab.id)}>
+            {tab.name}
+          </button>
         ))}
 
         <button style={{ ...css.tabBtn(false), color: G.textDim }} onClick={() => setModal("newTab")}>
@@ -169,6 +161,14 @@ export default function App() {
                   <button style={{ ...css.ghostBtn, fontSize: 11 }} onClick={() => setModal("newList")}>
                     + New list
                   </button>
+                  {state.tabs.length > 1 && (
+                    <button
+                      style={{ ...css.ghostBtn, fontSize: 11, color: G.danger, borderColor: G.dangerDim, marginLeft: "auto" }}
+                      onClick={() => setModal({ type: "confirm", msg: `Delete tab "${activeTab.name}" and everything in it?`, fn: () => deleteTab(activeTab.id) })}
+                    >
+                      Delete tab
+                    </button>
+                  )}
                 </>
               )}
             </div>
