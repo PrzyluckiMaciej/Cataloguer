@@ -16,7 +16,9 @@ export default function App() {
   const [modal, setModal] = useState(null);
   const [dragListIdx, setDragListIdx] = useState(null);
   const [overListIdx, setOverListIdx] = useState(null);
+  const [importError, setImportError] = useState(null);
   const saving = useRef(false);
+  const importRef = useRef();
 
   // Load from IndexedDB on mount
   useEffect(() => {
@@ -51,6 +53,39 @@ export default function App() {
   const switchTab = (id) => {
     setActiveTabId(id);
     setActiveListId(null);
+  };
+
+  // ── Export ────────────────────────────────────────────────────────────────
+  const handleExport = () => {
+    const json = JSON.stringify(state, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `catalogue-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // ── Import ────────────────────────────────────────────────────────────────
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!parsed.tabs || !parsed.lists || !parsed.items) throw new Error("Invalid format");
+        setState(parsed);
+        setActiveTabId(parsed.tabs[0]?.id || null);
+        setActiveListId(null);
+        setImportError(null);
+      } catch {
+        setImportError("Import failed — the file doesn't look like a valid backup.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
   };
 
   if (!state) {
@@ -114,6 +149,8 @@ export default function App() {
     setDragListIdx(null);
     setOverListIdx(null);
   };
+
+  // ── Item CRUD ─────────────────────────────────────────────────────────────
   const createItem = (item) =>
     update((s) => ({ ...s, items: [...s.items, item] }));
 
@@ -143,7 +180,26 @@ export default function App() {
         <button style={{ ...css.tabBtn(false), color: G.textDim }} onClick={() => setModal("newTab")}>
           ＋ Tab
         </button>
+
+        {/* Export / Import — pushed to the right */}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, paddingLeft: 16, borderLeft: `1px solid ${G.border}` }}>
+          <button style={{ ...css.ghostBtn, fontSize: 11 }} onClick={handleExport} title="Export all data as JSON">
+            ↓ Export
+          </button>
+          <button style={{ ...css.ghostBtn, fontSize: 11 }} onClick={() => importRef.current.click()} title="Import from JSON backup">
+            ↑ Import
+          </button>
+          <input ref={importRef} type="file" accept=".json" style={{ display: "none" }} onChange={handleImport} />
+        </div>
       </div>
+
+      {/* Import error banner */}
+      {importError && (
+        <div style={{ background: G.dangerDim, color: G.text, fontSize: 12, padding: "8px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {importError}
+          <button style={{ ...css.iconBtn(false), fontSize: 11 }} onClick={() => setImportError(null)}>✕</button>
+        </div>
+      )}
 
       {/* Main content */}
       <div style={{ flex: 1, padding: "28px 32px", maxWidth: 900, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
