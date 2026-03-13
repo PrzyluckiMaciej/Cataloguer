@@ -1,70 +1,73 @@
-# Getting Started with Create React App
+# Catalogue
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A personal item cataloguing app built with React. Organise anything into lists, rank them, attach images, and browse everything in a clean dark interface.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## Features
 
-### `npm start`
+- **Tabs → Lists → Items** hierarchy — tabs act as top-level sections, each containing any number of lists
+- **Three list types**
+  - *Numbered* — ordered ranking with rank numbers
+  - *Unranked* — simple collection with no ranking
+  - *Tiered* — S/A/B/C/D tier grid, items dragged between tiers (tiers are renameable)
+- **Grid or row view** — toggle between a card grid and a row layout per list; grid column count (2–6) is adjustable and saved per list
+- **Drag and drop** — reorder items within a list, and reorder lists within a tab
+- **Item images** — each item supports a thumbnail and a gallery of additional images; clicking the gallery opens a full-screen lightbox with filmstrip navigation and keyboard arrow support
+- **Inline renaming** — double-click any tab or list name to rename it in place
+- **Export / Import** — back up all data (including images) as a single JSON file and restore it at any time
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+---
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Getting Started
 
-### `npm test`
+**Requirements:** Node.js 14+
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
+npx create-react-app my-catalogue
+cd my-catalogue
+```
 
-### `npm run build`
+Delete everything inside `src/`, then copy the contents of this project's `src/` folder in its place, preserving the `components/` subdirectory structure.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+npm start
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+The app runs at `http://localhost:3000`.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+---
 
-### `npm run eject`
+## Storage
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+All data is stored in the browser's **IndexedDB** — no backend or database setup required. Data persists across page refreshes and browser restarts.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+> **Note:** IndexedDB data is tied to the browser profile. To avoid data loss, use the **Export** button in the top bar regularly to save a JSON backup.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+---
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Project Structure
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```
+src/
+├── App.jsx              # Thin orchestrator — wires hooks and top-level components
+├── useAppState.js       # All state, IndexedDB persistence, and CRUD operations
+├── useDataIO.js         # Export to JSON and import from JSON
+├── db.js                # IndexedDB read/write wrapper
+├── helpers.js           # uid(), fileToBase64(), constants, initial state
+├── styles.js            # Design tokens and shared style objects
+└── components/
+    ├── TopBar.jsx        # Nav bar — tabs, + Tab button, export/import
+    ├── TabView.jsx       # Breadcrumb header, tab overview, list detail view
+    ├── Modal.jsx         # Base modal wrapper
+    ├── EditableText.jsx  # Double-click inline text editing
+    ├── ListCard.jsx      # List summary row shown on the tab overview
+    ├── ListView.jsx      # Full list view with grid/row toggle and drag-and-drop
+    ├── ItemCard.jsx      # Item row card (row view)
+    ├── ItemGridCard.jsx  # Item card (grid view, hover actions)
+    ├── GalleryModal.jsx  # Full-screen image lightbox
+    ├── ItemFormModal.jsx # Create/edit item form
+    ├── ListFormModal.jsx # Create/edit list form
+    ├── NameFormModal.jsx # Simple name input modal (tabs)
+    └── ConfirmModal.jsx  # Delete confirmation dialog
+```
