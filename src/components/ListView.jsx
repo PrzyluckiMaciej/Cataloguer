@@ -1,17 +1,53 @@
 import { useState, useEffect, useRef } from "react";
 import { G, css } from "../styles";
-import { uid } from "../helpers";
 import EditableText from "./EditableText";
+import ItemGridCard from "./ItemGridCard";
 import ItemCard from "./ItemCard";
 import ItemFormModal from "./ItemFormModal";
 import ListFormModal from "./ListFormModal";
 import GalleryModal from "./GalleryModal";
 import ConfirmModal from "./ConfirmModal";
 
+const COL_OPTIONS = [2, 3, 4, 5, 6];
+
+// Grid / row toggle button
+function ViewToggle({ value, onChange }) {
+  const btn = (mode, label, title) => (
+    <button
+      title={title}
+      onClick={() => onChange(mode)}
+      style={{
+        fontFamily: "'Georgia', serif",
+        fontSize: 13,
+        width: 30, height: 28,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: value === mode ? G.accent : "none",
+        color: value === mode ? G.bg : G.textMuted,
+        border: `1px solid ${value === mode ? G.accent : G.border}`,
+        cursor: "pointer",
+        transition: "all 0.15s",
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div style={{ display: "flex", gap: 0 }}>
+      {btn("grid", "⊞", "Grid view")}
+      {btn("rows", "☰", "Row view")}
+    </div>
+  );
+}
+
 export default function ListView({ list, items, onUpdate, onDelete, onItemCreate, onItemUpdate, onItemDelete }) {
   const [modal, setModal] = useState(null);
   const [dragIdx, setDragIdx] = useState(null);
   const [overIdx, setOverIdx] = useState(null);
+  const [cols, setCols] = useState(list.cols ?? 4);
+  const [viewMode, setViewMode] = useState(list.viewMode ?? "grid");
+
+  const setAndSaveCols = (n) => { setCols(n); onUpdate({ ...list, cols: n, viewMode }); };
+  const setAndSaveViewMode = (m) => { setViewMode(m); onUpdate({ ...list, viewMode: m, cols }); };
 
   const listItems = items.filter((it) => it.listId === list.id);
 
@@ -72,11 +108,48 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
           onSave={(n) => onUpdate({ ...list, name: n })}
           style={{ fontSize: 15, letterSpacing: "0.04em", flex: 1 }}
         />
-        <div style={{ display: "flex", gap: 4 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <button style={{ ...css.ghostBtn, fontSize: 11 }} onClick={() => setModal("newItem")}>+ Add item</button>
           <button style={css.iconBtn(false)} onClick={() => setModal("editList")} title="Edit list">⚙</button>
           <button style={css.iconBtn(true)} onClick={() => setModal({ type: "confirm", msg: `Delete list "${list.name}" and all its items?`, fn: onDelete })} title="Delete list">✕</button>
         </div>
       </div>
+
+      {/* Toolbar — view toggle + column control */}
+      {list.type !== "tiered" && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", borderBottom: `1px solid ${G.border}`, background: G.bg }}>
+          <ViewToggle value={viewMode} onChange={setAndSaveViewMode} />
+          {viewMode === "grid" && (
+            <>
+              <div style={{ width: 1, height: 20, background: G.border }} />
+              <span style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: G.textDim }}>
+                Columns
+              </span>
+              <div style={{ display: "flex", gap: 4 }}>
+                {COL_OPTIONS.map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setAndSaveCols(n)}
+                    style={{
+                      fontFamily: "'Georgia', serif",
+                      fontSize: 12,
+                      width: 28, height: 28,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: cols === n ? G.accent : "none",
+                      color: cols === n ? G.bg : G.textMuted,
+                      border: `1px solid ${cols === n ? G.accent : G.border}`,
+                      cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Tiered layout */}
       {list.type === "tiered" ? (
@@ -121,8 +194,41 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
             );
           })}
         </div>
+      ) : viewMode === "grid" ? (
+        /* Grid layout */
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${cols}, 1fr)`,
+          gap: 1,
+          background: G.border,
+          padding: sorted.length === 0 ? 0 : 1,
+        }}>
+          {sorted.map((item, i) => (
+            <ItemGridCard
+              key={item.id}
+              item={item}
+              index={i}
+              listType={list.type}
+              rank={i + 1}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
+              isDragging={dragIdx === i}
+              isOver={overIdx === i}
+              onEdit={() => setModal({ type: "editItem", item })}
+              onDelete={() => setModal({ type: "confirm", msg: `Delete "${item.name}"?`, fn: () => onItemDelete(item.id) })}
+              onGallery={() => setModal({ type: "gallery", item })}
+            />
+          ))}
+          {sorted.length === 0 && (
+            <div style={{ gridColumn: "1 / -1", padding: "18px 16px", color: G.textDim, fontSize: 13, fontStyle: "italic", background: G.surface }}>
+              No items yet.
+            </div>
+          )}
+        </div>
       ) : (
-        /* Numbered / unranked layout */
+        /* Row layout */
         <div>
           {sorted.map((item, i) => (
             <ItemCard
@@ -149,11 +255,6 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
           )}
         </div>
       )}
-
-      {/* Add item */}
-      <div style={{ padding: "8px 12px", borderTop: sorted.length > 0 || list.type === "tiered" ? `1px solid ${G.border}` : "none" }}>
-        <button style={{ ...css.ghostBtn, fontSize: 11 }} onClick={() => setModal("newItem")}>+ Add item</button>
-      </div>
 
       {/* Modals */}
       {modal === "editList" && (

@@ -20,7 +20,6 @@ export default function App() {
   const saving = useRef(false);
   const importRef = useRef();
 
-  // Load from IndexedDB on mount
   useEffect(() => {
     dbGet("appState")
       .then((saved) => {
@@ -40,7 +39,6 @@ export default function App() {
       });
   }, []);
 
-  // Persist to IndexedDB whenever state changes
   useEffect(() => {
     if (!state || saving.current) return;
     saving.current = true;
@@ -49,7 +47,6 @@ export default function App() {
 
   const update = useCallback((fn) => setState((prev) => fn(prev)), []);
 
-  // Switch tab — always go back to the overview
   const switchTab = (id) => {
     setActiveTabId(id);
     setActiveListId(null);
@@ -202,52 +199,57 @@ export default function App() {
       )}
 
       {/* Main content */}
-      <div style={{ flex: 1, padding: "28px 32px", maxWidth: 900, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, width: "100%", boxSizing: "border-box" }}>
         {activeTab && (
           <>
-            {/* Breadcrumb header */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
-              {activeList ? (
-                <>
-                  <button
-                    onClick={() => setActiveListId(null)}
-                    style={{ ...css.ghostBtn, fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}
-                  >
-                    ‹ {activeTab.name}
-                  </button>
-                  <span style={{ color: G.textDim, fontSize: 14 }}>›</span>
-                  <span style={{ fontSize: 22, letterSpacing: "0.04em" }}>{activeList.name}</span>
-                </>
-              ) : (
-                <>
-                  <EditableText
-                    value={activeTab.name}
-                    onSave={(n) => updateTab({ ...activeTab, name: n })}
-                    style={{ fontSize: 26, letterSpacing: "0.06em", fontWeight: "normal", cursor: "text" }}
-                  />
-                  <button
-                    style={{ ...css.iconBtn(false), fontSize: 13, color: G.textDim }}
-                    onClick={() => setModal("renameTab")}
-                    title="Rename tab"
-                  >✎</button>
-                  <button style={{ ...css.ghostBtn, fontSize: 11, marginLeft: 4 }} onClick={() => setModal("newList")}>
-                    + New list
-                  </button>
-                  {state.tabs.length > 1 && (
+            {/* Header — constrained on overview, full-width on list detail */}
+            <div style={activeList
+              ? { padding: "28px 32px 0" }
+              : { maxWidth: 900, margin: "0 auto", padding: "28px 32px 0" }
+            }>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
+                {activeList ? (
+                  <>
                     <button
-                      style={{ ...css.ghostBtn, fontSize: 11, color: G.danger, borderColor: G.dangerDim, marginLeft: "auto" }}
-                      onClick={() => setModal({ type: "confirm", msg: `Delete tab "${activeTab.name}" and everything in it?`, fn: () => deleteTab(activeTab.id) })}
+                      onClick={() => setActiveListId(null)}
+                      style={{ ...css.ghostBtn, fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}
                     >
-                      Delete tab
+                      ‹ {activeTab.name}
                     </button>
-                  )}
-                </>
-              )}
+                    <span style={{ color: G.textDim, fontSize: 14 }}>›</span>
+                    <span style={{ fontSize: 22, letterSpacing: "0.04em" }}>{activeList.name}</span>
+                  </>
+                ) : (
+                  <>
+                    <EditableText
+                      value={activeTab.name}
+                      onSave={(n) => updateTab({ ...activeTab, name: n })}
+                      style={{ fontSize: 26, letterSpacing: "0.06em", fontWeight: "normal", cursor: "text" }}
+                    />
+                    <button
+                      style={{ ...css.iconBtn(false), fontSize: 13, color: G.textDim }}
+                      onClick={() => setModal("renameTab")}
+                      title="Rename tab"
+                    >✎</button>
+                    <button style={{ ...css.ghostBtn, fontSize: 11, marginLeft: 4 }} onClick={() => setModal("newList")}>
+                      + New list
+                    </button>
+                    {state.tabs.length > 1 && (
+                      <button
+                        style={{ ...css.ghostBtn, fontSize: 11, color: G.danger, borderColor: G.dangerDim, marginLeft: "auto" }}
+                        onClick={() => setModal({ type: "confirm", msg: `Delete tab "${activeTab.name}" and everything in it?`, fn: () => deleteTab(activeTab.id) })}
+                      >
+                        Delete tab
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
 
-            {/* Tab overview — list of ListCards */}
+            {/* Tab overview — constrained width */}
             {!activeList && (
-              <>
+              <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 32px 28px" }}>
                 {tabLists.length === 0 && (
                   <div style={{ color: G.textDim, fontStyle: "italic", fontSize: 13 }}>
                     No lists yet. Create one to get started.
@@ -269,20 +271,22 @@ export default function App() {
                     isOver={overListIdx === i}
                   />
                 ))}
-              </>
+              </div>
             )}
 
-            {/* List detail view */}
+            {/* List detail view — full width with side padding */}
             {activeList && (
-              <ListView
-                list={activeList}
-                items={state.items}
-                onUpdate={updateList}
-                onDelete={() => deleteList(activeList.id)}
-                onItemCreate={createItem}
-                onItemUpdate={updateItem}
-                onItemDelete={deleteItem}
-              />
+              <div style={{ padding: "0 32px 28px" }}>
+                <ListView
+                  list={activeList}
+                  items={state.items}
+                  onUpdate={updateList}
+                  onDelete={() => deleteList(activeList.id)}
+                  onItemCreate={createItem}
+                  onItemUpdate={updateItem}
+                  onItemDelete={deleteItem}
+                />
+              </div>
             )}
           </>
         )}
