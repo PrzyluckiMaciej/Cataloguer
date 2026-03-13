@@ -1,4 +1,4 @@
-const DB_NAME = "CatalogueApp";
+const DB_NAME = "CataloguerApp";
 const DB_VERSION = 1;
 let dbInstance = null;
 

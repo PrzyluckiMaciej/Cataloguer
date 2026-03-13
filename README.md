@@ -1,4 +1,4 @@
-# Catalogue
+# Cataloguer
 
 A personal item cataloguing app built with React. Organise anything into lists, rank them, attach images, and browse everything in a clean dark interface.
 
@@ -24,8 +24,8 @@ A personal item cataloguing app built with React. Organise anything into lists, 
 **Requirements:** Node.js 14+
 
 ```bash
-npx create-react-app my-catalogue
-cd my-catalogue
+npx create-react-app cataloguer
+cd cataloguer
 ```
 
 Delete everything inside `src/`, then copy the contents of this project's `src/` folder in its place, preserving the `components/` subdirectory structure.
