@@ -115,7 +115,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
         </div>
       </div>
 
-      {/* Toolbar — view toggle + column control */}
+      {/* Toolbar */}
       {list.type !== "tiered" && (
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", borderBottom: `1px solid ${G.border}`, background: G.bg }}>
           <ViewToggle value={viewMode} onChange={setAndSaveViewMode} />

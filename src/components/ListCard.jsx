@@ -62,7 +62,7 @@ export default function ListCard({ list, itemCount, onSelect, onUpdate, onDelete
       {/* Arrow */}
       <span style={{ color: G.textDim, fontSize: 16, flexShrink: 0, marginLeft: 4 }}>›</span>
 
-      {/* Actions — stop propagation so clicks don't open the list */}
+      {/* Actions */}
       <div style={{ display: "flex", gap: 4, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
         <button
           style={css.iconBtn(false)}

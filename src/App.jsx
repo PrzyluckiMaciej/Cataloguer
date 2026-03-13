@@ -1,89 +1,27 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { dbGet, dbSet } from "./db";
-import { uid, emptyState } from "./helpers";
 import { G, css } from "./styles";
-import EditableText from "./components/EditableText";
-import ListCard from "./components/ListCard";
-import ListView from "./components/ListView";
-import ListFormModal from "./components/ListFormModal";
-import NameFormModal from "./components/NameFormModal";
-import ConfirmModal from "./components/ConfirmModal";
+import { useAppState } from "./useAppState";
+import { useDataIO } from "./useDataIO";
+import TopBar from "./components/TopBar";
+import TabView from "./components/TabView";
 
 export default function App() {
-  const [state, setState] = useState(null);
-  const [activeTabId, setActiveTabId] = useState(null);
-  const [activeListId, setActiveListId] = useState(null);
-  const [modal, setModal] = useState(null);
-  const [dragListIdx, setDragListIdx] = useState(null);
-  const [overListIdx, setOverListIdx] = useState(null);
-  const [importError, setImportError] = useState(null);
-  const saving = useRef(false);
-  const importRef = useRef();
+  const {
+    state, setState,
+    activeTabId, activeListId, setActiveListId,
+    switchTab,
+    createTab, updateTab, deleteTab,
+    createList, updateList, deleteList,
+    createItem, updateItem, deleteItem,
+  } = useAppState();
 
-  useEffect(() => {
-    dbGet("appState")
-      .then((saved) => {
-        if (saved) {
-          setState(saved);
-          setActiveTabId(saved.tabs[0]?.id || null);
-        } else {
-          const s = emptyState();
-          setState(s);
-          setActiveTabId(s.tabs[0].id);
-        }
-      })
-      .catch(() => {
-        const s = emptyState();
-        setState(s);
-        setActiveTabId(s.tabs[0].id);
-      });
-  }, []);
-
-  useEffect(() => {
-    if (!state || saving.current) return;
-    saving.current = true;
-    dbSet("appState", state).finally(() => { saving.current = false; });
-  }, [state]);
-
-  const update = useCallback((fn) => setState((prev) => fn(prev)), []);
-
-  const switchTab = (id) => {
-    setActiveTabId(id);
-    setActiveListId(null);
-  };
-
-  // ── Export ────────────────────────────────────────────────────────────────
-  const handleExport = () => {
-    const json = JSON.stringify(state, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `catalogue-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // ── Import ────────────────────────────────────────────────────────────────
-  const handleImport = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const parsed = JSON.parse(ev.target.result);
-        if (!parsed.tabs || !parsed.lists || !parsed.items) throw new Error("Invalid format");
-        setState(parsed);
-        setActiveTabId(parsed.tabs[0]?.id || null);
-        setActiveListId(null);
-        setImportError(null);
-      } catch {
-        setImportError("Import failed — the file doesn't look like a valid backup.");
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-  };
+  const { importRef, importError, handleExport, handleImport, clearImportError } = useDataIO(
+    state,
+    (parsed) => {
+      setState(parsed);
+      switchTab(parsed.tabs[0]?.id || null);
+      setActiveListId(null);
+    }
+  );
 
   if (!state) {
     return (
@@ -95,228 +33,47 @@ export default function App() {
 
   const activeTab = state.tabs.find((t) => t.id === activeTabId) || state.tabs[0];
   const activeList = activeListId ? state.lists.find((l) => l.id === activeListId) : null;
-  const tabLists = state.lists.filter((l) => l.tabId === activeTabId).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-
-  // ── Tab CRUD ──────────────────────────────────────────────────────────────
-  const createTab = (name) => {
-    const tab = { id: uid(), name };
-    update((s) => ({ ...s, tabs: [...s.tabs, tab] }));
-    switchTab(tab.id);
-  };
-
-  const updateTab = (tab) =>
-    update((s) => ({ ...s, tabs: s.tabs.map((t) => (t.id === tab.id ? tab : t)) }));
-
-  const deleteTab = (id) => {
-    const listIds = state.lists.filter((l) => l.tabId === id).map((l) => l.id);
-    update((s) => ({
-      ...s,
-      tabs: s.tabs.filter((t) => t.id !== id),
-      lists: s.lists.filter((l) => l.tabId !== id),
-      items: s.items.filter((it) => !listIds.includes(it.listId)),
-    }));
-    switchTab(state.tabs.find((t) => t.id !== id)?.id || null);
-  };
-
-  // ── List CRUD ─────────────────────────────────────────────────────────────
-  const createList = (list) => {
-    const order = state.lists.filter((l) => l.tabId === activeTabId).length;
-    update((s) => ({ ...s, lists: [...s.lists, { ...list, order }] }));
-    setActiveListId(list.id);
-  };
-
-  const updateList = (list) =>
-    update((s) => ({ ...s, lists: s.lists.map((l) => (l.id === list.id ? list : l)) }));
-
-  const deleteList = (id) => {
-    update((s) => ({
-      ...s,
-      lists: s.lists.filter((l) => l.id !== id),
-      items: s.items.filter((it) => it.listId !== id),
-    }));
-    if (activeListId === id) setActiveListId(null);
-  };
-
-  const handleListReorder = (fromIdx, toIdx) => {
-    if (fromIdx === null || fromIdx === toIdx) return;
-    const reordered = [...tabLists];
-    const [moved] = reordered.splice(fromIdx, 1);
-    reordered.splice(toIdx, 0, moved);
-    reordered.forEach((l, i) => updateList({ ...l, order: i }));
-    setDragListIdx(null);
-    setOverListIdx(null);
-  };
-
-  // ── Item CRUD ─────────────────────────────────────────────────────────────
-  const createItem = (item) =>
-    update((s) => ({ ...s, items: [...s.items, item] }));
-
-  const updateItem = (item) =>
-    update((s) => ({ ...s, items: s.items.map((it) => (it.id === item.id ? item : it)) }));
-
-  const deleteItem = (id) =>
-    update((s) => ({ ...s, items: s.items.filter((it) => it.id !== id) }));
+  const tabLists = state.lists
+    .filter((l) => l.tabId === activeTabId)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   return (
     <div style={css.app}>
 
-      {/* Top navigation bar */}
-      <div style={css.topBar}>
-        <div style={{ display: "flex", alignItems: "center", paddingRight: 24, marginRight: 12, borderRight: `1px solid ${G.border}` }}>
-          <span style={{ fontFamily: "'Georgia', serif", fontSize: 14, letterSpacing: "0.12em", textTransform: "uppercase", color: G.accent }}>
-            Catalogue
-          </span>
-        </div>
+      <TopBar
+        tabs={state.tabs}
+        activeTabId={activeTabId}
+        onSwitchTab={switchTab}
+        onNewTab={createTab}
+        onExport={handleExport}
+        onImport={handleImport}
+        importRef={importRef}
+      />
 
-        {state.tabs.map((tab) => (
-          <button key={tab.id} style={css.tabBtn(tab.id === activeTabId)} onClick={() => switchTab(tab.id)}>
-            {tab.name}
-          </button>
-        ))}
-
-        <button style={{ ...css.tabBtn(false), color: G.textDim }} onClick={() => setModal("newTab")}>
-          ＋ Tab
-        </button>
-
-        {/* Export / Import — pushed to the right */}
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, paddingLeft: 16, borderLeft: `1px solid ${G.border}` }}>
-          <button style={{ ...css.ghostBtn, fontSize: 11 }} onClick={handleExport} title="Export all data as JSON">
-            ↓ Export
-          </button>
-          <button style={{ ...css.ghostBtn, fontSize: 11 }} onClick={() => importRef.current.click()} title="Import from JSON backup">
-            ↑ Import
-          </button>
-          <input ref={importRef} type="file" accept=".json" style={{ display: "none" }} onChange={handleImport} />
-        </div>
-      </div>
-
-      {/* Import error banner */}
       {importError && (
         <div style={{ background: G.dangerDim, color: G.text, fontSize: 12, padding: "8px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           {importError}
-          <button style={{ ...css.iconBtn(false), fontSize: 11 }} onClick={() => setImportError(null)}>✕</button>
+          <button style={{ background: "none", border: "none", color: G.text, cursor: "pointer", fontSize: 13 }} onClick={clearImportError}>✕</button>
         </div>
       )}
 
-      {/* Main content */}
-      <div style={{ flex: 1, width: "100%", boxSizing: "border-box" }}>
-        {activeTab && (
-          <>
-            {/* Header — constrained on overview, full-width on list detail */}
-            <div style={activeList
-              ? { padding: "28px 32px 0" }
-              : { maxWidth: 900, margin: "0 auto", padding: "28px 32px 0" }
-            }>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
-                {activeList ? (
-                  <>
-                    <button
-                      onClick={() => setActiveListId(null)}
-                      style={{ ...css.ghostBtn, fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}
-                    >
-                      ‹ {activeTab.name}
-                    </button>
-                    <span style={{ color: G.textDim, fontSize: 14 }}>›</span>
-                    <span style={{ fontSize: 22, letterSpacing: "0.04em" }}>{activeList.name}</span>
-                  </>
-                ) : (
-                  <>
-                    <EditableText
-                      value={activeTab.name}
-                      onSave={(n) => updateTab({ ...activeTab, name: n })}
-                      style={{ fontSize: 26, letterSpacing: "0.06em", fontWeight: "normal", cursor: "text" }}
-                    />
-                    <button
-                      style={{ ...css.iconBtn(false), fontSize: 13, color: G.textDim }}
-                      onClick={() => setModal("renameTab")}
-                      title="Rename tab"
-                    >✎</button>
-                    <button style={{ ...css.ghostBtn, fontSize: 11, marginLeft: 4 }} onClick={() => setModal("newList")}>
-                      + New list
-                    </button>
-                    {state.tabs.length > 1 && (
-                      <button
-                        style={{ ...css.ghostBtn, fontSize: 11, color: G.danger, borderColor: G.dangerDim, marginLeft: "auto" }}
-                        onClick={() => setModal({ type: "confirm", msg: `Delete tab "${activeTab.name}" and everything in it?`, fn: () => deleteTab(activeTab.id) })}
-                      >
-                        Delete tab
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Tab overview — constrained width */}
-            {!activeList && (
-              <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 32px 28px" }}>
-                {tabLists.length === 0 && (
-                  <div style={{ color: G.textDim, fontStyle: "italic", fontSize: 13 }}>
-                    No lists yet. Create one to get started.
-                  </div>
-                )}
-                {tabLists.map((list, i) => (
-                  <ListCard
-                    key={list.id}
-                    list={list}
-                    itemCount={state.items.filter((it) => it.listId === list.id).length}
-                    onSelect={() => setActiveListId(list.id)}
-                    onUpdate={updateList}
-                    onDelete={() => deleteList(list.id)}
-                    onDragStart={() => setDragListIdx(i)}
-                    onDragOver={() => setOverListIdx(i)}
-                    onDrop={() => handleListReorder(dragListIdx, i)}
-                    onDragEnd={() => { setDragListIdx(null); setOverListIdx(null); }}
-                    isDragging={dragListIdx === i}
-                    isOver={overListIdx === i}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* List detail view — full width with side padding */}
-            {activeList && (
-              <div style={{ padding: "0 32px 28px" }}>
-                <ListView
-                  list={activeList}
-                  items={state.items}
-                  onUpdate={updateList}
-                  onDelete={() => deleteList(activeList.id)}
-                  onItemCreate={createItem}
-                  onItemUpdate={updateItem}
-                  onItemDelete={deleteItem}
-                />
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Global modals */}
-      {modal === "renameTab" && (
-        <NameFormModal
-          title="Rename Tab"
-          initial={activeTab.name}
-          onSave={(n) => { updateTab({ ...activeTab, name: n }); setModal(null); }}
-          onClose={() => setModal(null)}
+      {activeTab && (
+        <TabView
+          state={state}
+          activeTab={activeTab}
+          activeList={activeList}
+          tabLists={tabLists}
+          activeTabId={activeTabId}
+          onSetActiveList={setActiveListId}
+          onUpdateTab={updateTab}
+          onDeleteTab={deleteTab}
+          onCreateList={createList}
+          onUpdateList={updateList}
+          onDeleteList={deleteList}
+          onCreateItem={createItem}
+          onUpdateItem={updateItem}
+          onDeleteItem={deleteItem}
         />
-      )}
-      {modal === "newTab" && (
-        <NameFormModal
-          title="New Tab"
-          onSave={(n) => { createTab(n); setModal(null); }}
-          onClose={() => setModal(null)}
-        />
-      )}
-      {modal === "newList" && (
-        <ListFormModal
-          tabId={activeTabId}
-          onSave={(list) => { createList(list); setModal(null); }}
-          onClose={() => setModal(null)}
-        />
-      )}
-      {modal?.type === "confirm" && (
-        <ConfirmModal message={modal.msg} onConfirm={modal.fn} onClose={() => setModal(null)} />
       )}
 
     </div>
