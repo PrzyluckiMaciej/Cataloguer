@@ -91,7 +91,6 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
     tierOver.current = { tierId: null, idx: null };
   };
 
-  // Handle save from ItemFormModal — may include a full reorder array
   const handleItemSave = (item, reorderedItems) => {
     if (reorderedItems) {
       reorderedItems.forEach((it) => onItemUpdate(it));

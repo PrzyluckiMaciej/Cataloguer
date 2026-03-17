@@ -8,9 +8,9 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
   const [thumbnail, setThumbnail] = useState(item?.thumbnail || null);
   const [images, setImages] = useState(item?.images || []);
 
-  // Position is 1-based for display; only relevant when editing
-  const currentPos = item ? (listItems.findIndex((it) => it.id === item.id) + 1) || 1 : null;
+  const currentPos = item != null ? (item.order ?? 0) + 1 : null;
   const [positionStr, setPositionStr] = useState(String(currentPos ?? ""));
+  const initialPosRef = useRef(currentPos);
 
   const thumbRef = useRef();
   const imgsRef = useRef();
@@ -30,13 +30,12 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
 
   const submit = () => {
     if (!name.trim()) return;
-    const saved = { id: item?.id || uid(), name: name.trim(), thumbnail, images, listId };
+    const saved = { id: item?.id || uid(), name: name.trim(), thumbnail, images, listId, order: item?.order };
 
-    // If position changed, reorder: remove from old spot, insert at new
     if (item && listItems.length > 0) {
       const parsed = parseInt(positionStr, 10);
-      const clamped = isNaN(parsed) ? currentPos : Math.max(1, Math.min(parsed, listItems.length));
-      if (clamped !== currentPos) {
+      const clamped = isNaN(parsed) ? initialPosRef.current : Math.max(1, Math.min(parsed, listItems.length));
+      if (clamped !== initialPosRef.current) {
         const reordered = listItems.filter((it) => it.id !== item.id);
         reordered.splice(clamped - 1, 0, { ...saved });
         onSave(saved, reordered.map((it, i) => ({ ...it, order: i })));
@@ -78,7 +77,7 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
                 onChange={(e) => setPositionStr(e.target.value)}
                 onBlur={() => {
                   const parsed = parseInt(positionStr, 10);
-                  const clamped = isNaN(parsed) ? currentPos : Math.max(1, Math.min(parsed, listItems.length));
+                  const clamped = isNaN(parsed) ? initialPosRef.current : Math.max(1, Math.min(parsed, listItems.length));
                   setPositionStr(String(clamped));
                 }}
               />
