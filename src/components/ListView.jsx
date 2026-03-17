@@ -44,6 +44,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
   const [overIdx, setOverIdx] = useState(null);
   const [cols, setCols] = useState(list.cols ?? 4);
   const [viewMode, setViewMode] = useState(list.viewMode ?? "grid");
+  const [query, setQuery] = useState("");
 
   const setAndSaveCols = (n) => { setCols(n); onUpdate({ ...list, cols: n, viewMode }); };
   const setAndSaveViewMode = (m) => { setViewMode(m); onUpdate({ ...list, viewMode: m, cols }); };
@@ -101,6 +102,10 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
   };
 
   const sorted = [...listItems].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const filtered = query.trim()
+    ? sorted.filter((it) => it.name.toLowerCase().includes(query.toLowerCase()))
+    : sorted;
+  const isFiltering = query.trim().length > 0;
 
   return (
     <div style={{ background: G.surface, border: `1px solid ${G.border}`, marginBottom: 16 }}>
@@ -122,7 +127,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
         </div>
       </div>
 
-      {/* Toolbar — view toggle + column control */}
+      {/* Toolbar — view toggle + column control + search */}
       {list.type !== "tiered" && (
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", borderBottom: `1px solid ${G.border}`, background: G.bg }}>
           <ViewToggle value={viewMode} onChange={setAndSaveViewMode} />
@@ -155,6 +160,29 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
               </div>
             </>
           )}
+          {/* Search */}
+          <div style={{ marginLeft: "auto", position: "relative", display: "flex", alignItems: "center" }}>
+            <span style={{ position: "absolute", left: 8, color: G.textDim, fontSize: 12, pointerEvents: "none" }}>⌕</span>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search items…"
+              style={{
+                ...css.input,
+                width: 180,
+                paddingLeft: 24,
+                paddingTop: 5,
+                paddingBottom: 5,
+                fontSize: 12,
+              }}
+            />
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                style={{ ...css.iconBtn(false), position: "absolute", right: 4, fontSize: 11, padding: "2px 4px" }}
+              >✕</button>
+            )}
+          </div>
         </div>
       )}
 
@@ -208,56 +236,56 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
           gridTemplateColumns: `repeat(${cols}, 1fr)`,
           gap: 1,
           background: G.border,
-          padding: sorted.length === 0 ? 0 : 1,
+          padding: filtered.length === 0 ? 0 : 1,
         }}>
-          {sorted.map((item, i) => (
+          {filtered.map((item, i) => (
             <ItemGridCard
               key={item.id}
               item={item}
               index={i}
               listType={list.type}
-              rank={i + 1}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-              onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
-              isDragging={dragIdx === i}
-              isOver={overIdx === i}
+              rank={sorted.indexOf(item) + 1}
+              onDragStart={isFiltering ? () => {} : handleDragStart}
+              onDragOver={isFiltering ? () => {} : handleDragOver}
+              onDrop={isFiltering ? () => {} : handleDrop}
+              onDragEnd={isFiltering ? () => {} : () => { setDragIdx(null); setOverIdx(null); }}
+              isDragging={!isFiltering && dragIdx === i}
+              isOver={!isFiltering && overIdx === i}
               onEdit={() => setModal({ type: "editItem", item })}
               onDelete={() => setModal({ type: "confirm", msg: `Delete "${item.name}"?`, fn: () => onItemDelete(item.id) })}
               onGallery={() => setModal({ type: "gallery", item })}
             />
           ))}
-          {sorted.length === 0 && (
+          {filtered.length === 0 && (
             <div style={{ gridColumn: "1 / -1", padding: "18px 16px", color: G.textDim, fontSize: 13, fontStyle: "italic", background: G.surface }}>
-              No items yet.
+              {isFiltering ? `No items match "${query}"` : "No items yet."}
             </div>
           )}
         </div>
       ) : (
         /* Row layout */
         <div>
-          {sorted.map((item, i) => (
+          {filtered.map((item, i) => (
             <ItemCard
               key={item.id}
               item={item}
               index={i}
               listType={list.type}
-              rank={i + 1}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-              onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
-              isDragging={dragIdx === i}
-              isOver={overIdx === i}
+              rank={sorted.indexOf(item) + 1}
+              onDragStart={isFiltering ? () => {} : handleDragStart}
+              onDragOver={isFiltering ? () => {} : handleDragOver}
+              onDrop={isFiltering ? () => {} : handleDrop}
+              onDragEnd={isFiltering ? () => {} : () => { setDragIdx(null); setOverIdx(null); }}
+              isDragging={!isFiltering && dragIdx === i}
+              isOver={!isFiltering && overIdx === i}
               onEdit={() => setModal({ type: "editItem", item })}
               onDelete={() => setModal({ type: "confirm", msg: `Delete "${item.name}"?`, fn: () => onItemDelete(item.id) })}
               onGallery={() => setModal({ type: "gallery", item })}
             />
           ))}
-          {sorted.length === 0 && (
+          {filtered.length === 0 && (
             <div style={{ padding: "18px 16px", color: G.textDim, fontSize: 13, fontStyle: "italic" }}>
-              No items yet.
+              {isFiltering ? `No items match "${query}"` : "No items yet."}
             </div>
           )}
         </div>
