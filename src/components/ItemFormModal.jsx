@@ -3,10 +3,15 @@ import { G, css } from "../styles";
 import { uid, fileToBase64 } from "../helpers";
 import Modal from "./Modal";
 
-export default function ItemFormModal({ item, listId, onSave, onClose }) {
+export default function ItemFormModal({ item, listId, listItems = [], onSave, onClose }) {
   const [name, setName] = useState(item?.name || "");
   const [thumbnail, setThumbnail] = useState(item?.thumbnail || null);
   const [images, setImages] = useState(item?.images || []);
+
+  // Position is 1-based for display; only relevant when editing
+  const currentPos = item ? (listItems.findIndex((it) => it.id === item.id) + 1) || 1 : null;
+  const [positionStr, setPositionStr] = useState(String(currentPos ?? ""));
+
   const thumbRef = useRef();
   const imgsRef = useRef();
 
@@ -25,7 +30,22 @@ export default function ItemFormModal({ item, listId, onSave, onClose }) {
 
   const submit = () => {
     if (!name.trim()) return;
-    onSave({ id: item?.id || uid(), name: name.trim(), thumbnail, images, listId });
+    const saved = { id: item?.id || uid(), name: name.trim(), thumbnail, images, listId };
+
+    // If position changed, reorder: remove from old spot, insert at new
+    if (item && listItems.length > 0) {
+      const parsed = parseInt(positionStr, 10);
+      const clamped = isNaN(parsed) ? currentPos : Math.max(1, Math.min(parsed, listItems.length));
+      if (clamped !== currentPos) {
+        const reordered = listItems.filter((it) => it.id !== item.id);
+        reordered.splice(clamped - 1, 0, { ...saved });
+        onSave(saved, reordered.map((it, i) => ({ ...it, order: i })));
+      } else {
+        onSave(saved, null);
+      }
+    } else {
+      onSave(saved, null);
+    }
   };
 
   return (
@@ -43,6 +63,29 @@ export default function ItemFormModal({ item, listId, onSave, onClose }) {
             placeholder="Item name"
           />
         </div>
+
+        {/* Position — only shown when editing an existing item */}
+        {item && listItems.length > 1 && (
+          <div>
+            <label style={css.label}>Position (1 – {listItems.length})</label>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                type="number"
+                min={1}
+                max={listItems.length}
+                style={{ ...css.input, width: 72 }}
+                value={positionStr}
+                onChange={(e) => setPositionStr(e.target.value)}
+                onBlur={() => {
+                  const parsed = parseInt(positionStr, 10);
+                  const clamped = isNaN(parsed) ? currentPos : Math.max(1, Math.min(parsed, listItems.length));
+                  setPositionStr(String(clamped));
+                }}
+              />
+              <span style={{ fontSize: 12, color: G.textDim }}>of {listItems.length}</span>
+            </div>
+          </div>
+        )}
 
         <div>
           <label style={css.label}>Thumbnail</label>

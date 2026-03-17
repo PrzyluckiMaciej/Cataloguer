@@ -10,7 +10,6 @@ import ConfirmModal from "./ConfirmModal";
 
 const COL_OPTIONS = [2, 3, 4, 5, 6];
 
-// Grid / row toggle button
 function ViewToggle({ value, onChange }) {
   const btn = (mode, label, title) => (
     <button
@@ -72,7 +71,6 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
   const handleDragOver = (idx) => setOverIdx(idx);
   const handleDrop = (dropIdx) => {
     if (dragIdx === null || dragIdx === dropIdx) return;
-    const sorted = [...listItems].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     const reordered = [...sorted];
     const [moved] = reordered.splice(dragIdx, 1);
     reordered.splice(dropIdx, 0, moved);
@@ -91,6 +89,16 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
     onItemUpdate({ ...moved, tierId: toTierId });
     tierDrag.current = { tierId: null, idx: null };
     tierOver.current = { tierId: null, idx: null };
+  };
+
+  // Handle save from ItemFormModal — may include a full reorder array
+  const handleItemSave = (item, reorderedItems) => {
+    if (reorderedItems) {
+      reorderedItems.forEach((it) => onItemUpdate(it));
+    } else {
+      onItemUpdate(item);
+    }
+    setModal(null);
   };
 
   const sorted = [...listItems].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -115,7 +123,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
         </div>
       </div>
 
-      {/* Toolbar */}
+      {/* Toolbar — view toggle + column control */}
       {list.type !== "tiered" && (
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", borderBottom: `1px solid ${G.border}`, background: G.bg }}>
           <ViewToggle value={viewMode} onChange={setAndSaveViewMode} />
@@ -268,6 +276,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
       {modal === "newItem" && (
         <ItemFormModal
           listId={list.id}
+          listItems={sorted}
           onSave={(item) => {
             onItemCreate({
               ...item,
@@ -283,7 +292,8 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
         <ItemFormModal
           item={modal.item}
           listId={list.id}
-          onSave={(item) => { onItemUpdate(item); setModal(null); }}
+          listItems={sorted}
+          onSave={handleItemSave}
           onClose={() => setModal(null)}
         />
       )}
