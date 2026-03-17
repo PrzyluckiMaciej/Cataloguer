@@ -2,13 +2,14 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { G, css } from "../styles";
 import { uid, fileToBase64 } from "../helpers";
 import Modal from "./Modal";
+import ThumbnailCropper from "./ThumbnailCropper";
 
 export default function ItemFormModal({ item, listId, listItems = [], onSave, onClose }) {
   const [name, setName] = useState(item?.name || "");
   const [thumbnail, setThumbnail] = useState(item?.thumbnail || null);
   const [images, setImages] = useState(item?.images || []);
+  const [cropSrc, setCropSrc] = useState(null); 
 
-  // Position is 1-based for display; item.order is 0-based and always up to date
   const currentPos = item != null ? (item.order ?? 0) + 1 : null;
   const [positionStr, setPositionStr] = useState(String(currentPos ?? ""));
   const initialPosRef = useRef(currentPos);
@@ -18,7 +19,10 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
 
   const handleThumb = async (e) => {
     const f = e.target.files[0];
-    if (f) setThumbnail(await fileToBase64(f));
+    if (!f) return;
+    const src = await fileToBase64(f);
+    setCropSrc(src); 
+    e.target.value = "";
   };
 
   const handleImages = async (e) => {
@@ -61,7 +65,8 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
   }, [submit]);
 
   return (
-    <Modal title={item ? "Edit Item" : "New Item"} onClose={onClose}>
+    <>
+      <Modal title={item ? "Edit Item" : "New Item"} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
         <div>
@@ -112,9 +117,14 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
             {thumbnail ? "Replace" : "Upload thumbnail"}
           </button>
           {thumbnail && (
-            <button style={{ ...css.ghostBtn, marginLeft: 8 }} onClick={() => setThumbnail(null)}>
-              Remove
-            </button>
+            <>
+              <button style={{ ...css.ghostBtn, marginLeft: 8 }} onClick={() => setCropSrc(thumbnail)}>
+                Crop
+              </button>
+              <button style={{ ...css.ghostBtn, marginLeft: 8 }} onClick={() => setThumbnail(null)}>
+                Remove
+              </button>
+            </>
           )}
           <input ref={thumbRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleThumb} />
         </div>
@@ -152,5 +162,15 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
 
       </div>
     </Modal>
+
+    {/* Thumbnail cropper — renders outside the main modal */}
+    {cropSrc && (
+      <ThumbnailCropper
+        imageSrc={cropSrc}
+        onCrop={(cropped) => { setThumbnail(cropped); setCropSrc(null); }}
+        onCancel={() => setCropSrc(null)}
+      />
+    )}
+    </>
   );
 }
