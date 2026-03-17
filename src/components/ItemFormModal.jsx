@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { G, css } from "../styles";
 import { uid, fileToBase64 } from "../helpers";
 import Modal from "./Modal";
@@ -8,6 +8,7 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
   const [thumbnail, setThumbnail] = useState(item?.thumbnail || null);
   const [images, setImages] = useState(item?.images || []);
 
+  // Position is 1-based for display; item.order is 0-based and always up to date
   const currentPos = item != null ? (item.order ?? 0) + 1 : null;
   const [positionStr, setPositionStr] = useState(String(currentPos ?? ""));
   const initialPosRef = useRef(currentPos);
@@ -28,7 +29,7 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
 
   const removeImage = (i) => setImages((prev) => prev.filter((_, j) => j !== i));
 
-  const submit = () => {
+  const submit = useCallback(() => {
     if (!name.trim()) return;
     const saved = { id: item?.id || uid(), name: name.trim(), thumbnail, images, listId, order: item?.order };
 
@@ -45,7 +46,19 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
     } else {
       onSave(saved, null);
     }
-  };
+  }, [name, thumbnail, images, positionStr, item, listItems, listId, onSave]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        const tag = document.activeElement?.tagName;
+        if (tag === "BUTTON" || (tag === "INPUT" && document.activeElement.type === "file")) return;
+        submit();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [submit]);
 
   return (
     <Modal title={item ? "Edit Item" : "New Item"} onClose={onClose}>
