@@ -190,10 +190,16 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
       {list.type === "tiered" ? (
         <div>
           {list.tiers.map((tier) => {
+            const tierColor = tier.color || G.tierColors?.[tier.label] || G.accentDim;
             const tItems = tierItems[tier.id] || [];
             return (
               <div key={tier.id} style={{ display: "flex", borderBottom: `1px solid ${G.border}`, minHeight: 52 }}>
-                <div style={{ width: 44, background: G.tierColors[tier.label] || G.accentDim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: "bold", color: "#fff", flexShrink: 0 }}>
+                <div style={{
+                  width: 44,
+                  background: tierColor,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 16, fontWeight: "bold", color: "#fff", flexShrink: 0,
+                }}>
                   {tier.label.slice(0, 2)}
                 </div>
                 <div
