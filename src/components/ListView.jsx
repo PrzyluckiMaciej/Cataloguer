@@ -446,7 +446,18 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
         <ListFormModal
           list={list}
           tabId={list.tabId}
-          onSave={(updated) => { onUpdate(updated); setModal(null); }}
+          onSave={(updated) => {
+            if (updated.type === "tiered" && list.type === "tiered") {
+              const newTierIds = new Set(updated.tiers.map((t) => t.id));
+              listItems.forEach((it) => {
+                if (it.tierId && !newTierIds.has(it.tierId)) {
+                  onItemUpdate({ ...it, tierId: null, tierOrder: undefined });
+                }
+              });
+            }
+            onUpdate(updated);
+            setModal(null);
+          }}
           onClose={() => setModal(null)}
         />
       )}
