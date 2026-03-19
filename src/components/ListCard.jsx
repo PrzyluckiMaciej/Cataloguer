@@ -3,7 +3,7 @@ import { G, css } from "../styles";
 import ListFormModal from "./ListFormModal";
 import ConfirmModal from "./ConfirmModal";
 
-export default function ListCard({ list, itemCount, onSelect, onUpdate, onDelete, onDragStart, onDragOver, onDrop, onDragEnd, isDragging, isOver }) {
+export default function ListCard({ list, itemCount, onSelect, onUpdate, onDelete, onDuplicate, onDragStart, onDragOver, onDrop, onDragEnd, isDragging, isOver }) {
   const [modal, setModal] = useState(null);
 
   return (
@@ -40,6 +40,7 @@ export default function ListCard({ list, itemCount, onSelect, onUpdate, onDelete
         onClick={(e) => e.stopPropagation()}
         title="Drag to reorder"
       >⠿</span>
+
       {/* Type badge */}
       <span style={{
         fontSize: 10, letterSpacing: "0.15em", textTransform: "uppercase",
@@ -69,6 +70,11 @@ export default function ListCard({ list, itemCount, onSelect, onUpdate, onDelete
           onClick={() => setModal("editList")}
           title="Edit list settings"
         >⚙</button>
+        <button
+          style={css.iconBtn(false)}
+          onClick={() => onDuplicate()}
+          title="Duplicate list"
+        >⧉</button>
         <button
           style={css.iconBtn(true)}
           onClick={() => setModal({ type: "confirm", msg: `Delete list "${list.name}" and all its items?`, fn: onDelete })}

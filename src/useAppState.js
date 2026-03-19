@@ -82,6 +82,21 @@ export function useAppState() {
     if (activeListId === id) setActiveListId(null);
   };
 
+  const duplicateList = (id) => {
+    const original = state.lists.find((l) => l.id === id);
+    if (!original) return;
+    const newListId = uid();
+    const order = state.lists.filter((l) => l.tabId === original.tabId).length;
+    const newList = { ...original, id: newListId, name: `${original.name} (copy)`, order };
+    const originalItems = state.items.filter((it) => it.listId === id);
+    const newItems = originalItems.map((it) => ({ ...it, id: uid(), listId: newListId }));
+    update((s) => ({
+      ...s,
+      lists: [...s.lists, newList],
+      items: [...s.items, ...newItems],
+    }));
+  };
+
   // ── Item CRUD ─────────────────────────────────────────────────────────────
   const createItem = (item) =>
     update((s) => ({ ...s, items: [...s.items, item] }));
@@ -100,7 +115,7 @@ export function useAppState() {
     setActiveListId,
     switchTab,
     createTab, updateTab, deleteTab,
-    createList, updateList, deleteList,
+    createList, updateList, deleteList, duplicateList,
     createItem, updateItem, deleteItem,
   };
 }

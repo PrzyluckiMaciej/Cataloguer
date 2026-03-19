@@ -108,21 +108,18 @@ export default function ThumbnailCropper({ imageSrc, onCrop, onCancel }) {
         size = Math.max(MIN_SIZE, Math.min(sc.size + dx, sc.size + dy, dw - sc.x, dh - sc.y));
 
       } else if (ds.corner === "bl") {
-        // drag left shrinks x, drag down grows; take the smaller of the two deltas
         const d = Math.min(-dx, dy);
         const clamped = Math.max(MIN_SIZE - sc.size, Math.min(d, sc.x, dh - sc.y - sc.size));
         size = sc.size + clamped;
         x = sc.x - clamped;
 
       } else if (ds.corner === "tr") {
-        // drag right grows, drag up shrinks; take the smaller of the two deltas
         const d = Math.min(dx, -dy);
         const clamped = Math.max(MIN_SIZE - sc.size, Math.min(d, dw - sc.x - sc.size, sc.y));
         size = sc.size + clamped;
         y = sc.y - clamped;
 
       } else if (ds.corner === "tl") {
-        // drag left and up both shrink; take the smaller of the two deltas
         const d = Math.min(-dx, -dy);
         const clamped = Math.max(MIN_SIZE - sc.size, Math.min(d, sc.x, sc.y));
         size = sc.size + clamped;
@@ -169,7 +166,7 @@ export default function ThumbnailCropper({ imageSrc, onCrop, onCancel }) {
     <Modal title="Crop Thumbnail" onClose={onCancel}>
       <div ref={containerRef} style={{ width: "100%" }}>
 
-        {/* Centered image + overlay */}
+        {/* Image + overlay */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
           <div
             style={{

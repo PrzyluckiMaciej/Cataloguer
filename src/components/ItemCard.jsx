@@ -34,7 +34,7 @@ export default function ItemCard({
         {listType === "numbered" ? rank : "·"}
       </div>
 
-      {/* Thumbnail — only rendered if present */}
+      {/* Thumbnail */}
       {item.thumbnail && (
         <img src={item.thumbnail} alt="" style={{ width: THUMB, height: THUMB, objectFit: "cover", flexShrink: 0, borderRight: `1px solid ${G.border}` }} />
       )}

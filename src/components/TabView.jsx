@@ -19,6 +19,7 @@ export default function TabView({
   onCreateList,
   onUpdateList,
   onDeleteList,
+  onDuplicateList,
   onCreateItem,
   onUpdateItem,
   onDeleteItem,
@@ -104,6 +105,7 @@ export default function TabView({
               onSelect={() => onSetActiveList(list.id)}
               onUpdate={onUpdateList}
               onDelete={() => onDeleteList(list.id)}
+              onDuplicate={() => onDuplicateList(list.id)}
               onDragStart={() => setDragListIdx(i)}
               onDragOver={() => setOverListIdx(i)}
               onDrop={() => handleListReorder(dragListIdx, i)}

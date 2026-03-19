@@ -10,7 +10,7 @@ export default function App() {
     activeTabId, activeListId, setActiveListId,
     switchTab,
     createTab, updateTab, deleteTab,
-    createList, updateList, deleteList,
+    createList, updateList, deleteList, duplicateList,
     createItem, updateItem, deleteItem,
   } = useAppState();
 
@@ -70,6 +70,7 @@ export default function App() {
           onCreateList={createList}
           onUpdateList={updateList}
           onDeleteList={deleteList}
+          onDuplicateList={duplicateList}
           onCreateItem={createItem}
           onUpdateItem={updateItem}
           onDeleteItem={deleteItem}

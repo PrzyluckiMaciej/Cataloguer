@@ -81,7 +81,7 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
           />
         </div>
 
-        {/* Position — only shown when editing an existing item */}
+        {/* Position */}
         {item && listItems.length > 1 && (
           <div>
             <label style={css.label}>Position (1 – {listItems.length})</label>
@@ -163,7 +163,7 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
       </div>
     </Modal>
 
-    {/* Thumbnail cropper — renders outside the main modal */}
+    {/* Thumbnail cropper */}
     {cropSrc && (
       <ThumbnailCropper
         imageSrc={cropSrc}
