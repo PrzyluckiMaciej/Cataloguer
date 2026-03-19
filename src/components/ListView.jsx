@@ -65,8 +65,8 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
     setTierItems(map);
   }, [items, list]);
 
-  const tierDrag = useRef({ tierId: null, idx: null });
-  const tierOver = useRef({ tierId: null, idx: null });
+  const tierDrag = useRef({ tierId: undefined, idx: null });
+  const tierOver = useRef({ tierId: undefined, idx: null });
 
   const handleDragStart = (e, idx) => setDragIdx(idx);
   const handleDragOver = (idx) => setOverIdx(idx);
@@ -82,14 +82,19 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
 
   const handleTierDrop = (toTierId, toIdx) => {
     const { tierId: fromTierId, idx: fromIdx } = tierDrag.current;
-    if (fromTierId === null) return;
-    const srcItems = [...(tierItems[fromTierId] || [])];
+    if (fromTierId === undefined) return; // nothing being dragged
+    if (fromTierId === toTierId && fromIdx === toIdx) return;
+    const getItems = (tid) =>
+      tid === null
+        ? listItems.filter((it) => !it.tierId)
+        : (tierItems[tid] || []);
+    const srcItems = [...getItems(fromTierId)];
     const [moved] = srcItems.splice(fromIdx, 1);
-    const destItems = fromTierId === toTierId ? srcItems : [...(tierItems[toTierId] || [])];
+    const destItems = fromTierId === toTierId ? srcItems : [...getItems(toTierId)];
     destItems.splice(toIdx, 0, moved);
-    onItemUpdate({ ...moved, tierId: toTierId });
-    tierDrag.current = { tierId: null, idx: null };
-    tierOver.current = { tierId: null, idx: null };
+    onItemUpdate({ ...moved, tierId: toTierId ?? null });
+    tierDrag.current = { tierId: undefined, idx: null };
+    tierOver.current = { tierId: undefined, idx: null };
   };
 
   const handleItemSave = (item, reorderedItems) => {
@@ -234,6 +239,79 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
               </div>
             );
           })}
+
+          {/* Unranked pool */}
+          {(() => {
+            const unrankedItems = listItems.filter((it) => !it.tierId);
+            return (
+              <div style={{ borderTop: `2px dashed ${G.border}` }}>
+                {/* Unranked header */}
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "8px 12px",
+                  background: G.bg,
+                  borderBottom: `1px solid ${G.border}`,
+                }}>
+                  <span style={{
+                    fontSize: 10, letterSpacing: "0.15em", textTransform: "uppercase",
+                    color: G.textDim,
+                  }}>
+                    Unranked
+                  </span>
+                  <span style={{ fontSize: 11, color: G.textDim }}>
+                    — drag into a tier to rank
+                  </span>
+                  <span style={{ marginLeft: "auto", fontSize: 11, color: G.textDim }}>
+                    {unrankedItems.length} {unrankedItems.length === 1 ? "item" : "items"}
+                  </span>
+                </div>
+
+                {/* Drop zone */}
+                <div
+                  style={{
+                    display: "flex", flexWrap: "wrap", gap: 0, padding: 4,
+                    alignContent: "flex-start", minHeight: 72,
+                    background: G.surface,
+                  }}
+                  onDragOver={(e) => { e.preventDefault(); tierOver.current = { tierId: null, idx: unrankedItems.length }; }}
+                  onDrop={(e) => { e.preventDefault(); handleTierDrop(null, tierOver.current.idx); }}
+                >
+                  {unrankedItems.length === 0 && (
+                    <div style={{
+                      width: "100%", padding: "16px 12px",
+                      color: G.textDim, fontSize: 12, fontStyle: "italic",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      No unranked items — new items will appear here
+                    </div>
+                  )}
+                  {unrankedItems.map((item, i) => (
+                    <div
+                      key={item.id}
+                      draggable
+                      onDragStart={() => { tierDrag.current = { tierId: null, idx: i }; }}
+                      onDragOver={(e) => { e.preventDefault(); tierOver.current = { tierId: null, idx: i }; }}
+                      onDrop={(e) => { e.preventDefault(); handleTierDrop(null, i); }}
+                      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 8px", cursor: "grab", opacity: 0.85 }}
+                    >
+                      {item.thumbnail
+                        ? <img src={item.thumbnail} alt="" style={{ width: 48, height: 48, objectFit: "cover", border: `1px solid ${G.border}` }} />
+                        : <div style={{ width: 48, height: 48, background: G.surfaceHigh, border: `1px solid ${G.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: G.textDim, fontSize: 9 }}>IMG</div>
+                      }
+                      <span style={{ fontSize: 10, color: G.textMuted, maxWidth: 60, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>{item.name}</span>
+                      <div style={{ display: "flex", gap: 2 }}>
+                        {item.images?.length > 0 && (
+                          <button style={{ ...css.iconBtn(false), fontSize: 9, padding: "1px 3px" }} onClick={() => setModal({ type: "gallery", item })}>⧉</button>
+                        )}
+                        <button style={{ ...css.iconBtn(false), fontSize: 9, padding: "1px 3px" }} onClick={() => setModal({ type: "editItem", item })}>✎</button>
+                        <button style={{ ...css.iconBtn(true), fontSize: 9, padding: "1px 3px" }} onClick={() => setModal({ type: "confirm", msg: `Delete "${item.name}"?`, fn: () => onItemDelete(item.id) })}>✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       ) : viewMode === "grid" ? (
         /* Grid layout */
@@ -313,7 +391,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
           onSave={(item) => {
             onItemCreate({
               ...item,
-              tierId: list.type === "tiered" && list.tiers.length ? list.tiers[list.tiers.length - 1].id : undefined,
+              tierId: null,
               order: listItems.length,
             });
             setModal(null);
