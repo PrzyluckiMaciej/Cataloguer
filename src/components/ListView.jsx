@@ -72,7 +72,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
         .sort((a, b) => (a.tierOrder ?? 0) - (b.tierOrder ?? 0));
     });
     setTierItems(map);
-  }, [items, list]);
+  }, [items, list, listItems]);
 
   const tierDrag = useRef({ tierId: undefined, idx: null });
   const tierOver = useRef({ tierId: undefined, idx: null });
