@@ -77,6 +77,24 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
   const tierDrag = useRef({ tierId: undefined, idx: null });
   const tierOver = useRef({ tierId: undefined, idx: null });
 
+  // Tier row reordering
+  const [dragTierIdx, setDragTierIdx] = useState(null);
+  const [overTierIdx, setOverTierIdx] = useState(null);
+
+  const handleTierRowDrop = (toIdx) => {
+    if (dragTierIdx === null || dragTierIdx === toIdx) {
+      setDragTierIdx(null);
+      setOverTierIdx(null);
+      return;
+    }
+    const reordered = [...list.tiers];
+    const [moved] = reordered.splice(dragTierIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    onUpdate({ ...list, tiers: reordered });
+    setDragTierIdx(null);
+    setOverTierIdx(null);
+  };
+
   const handleDragStart = (e, idx) => setDragIdx(idx);
   const handleDragOver = (idx) => setOverIdx(idx);
   const handleDrop = (dropIdx) => {
@@ -214,31 +232,59 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
       {/* Tiered layout */}
       {list.type === "tiered" ? (
         <div>
-          {list.tiers.map((tier) => {
+          {list.tiers.map((tier, tierIdx) => {
             const tierColor = tier.color || G.tierColors?.[tier.label] || G.accentDim;
             const tItems = tierItems[tier.id] || [];
+            const isDraggingThisTier = dragTierIdx === tierIdx;
+            const isOverThisTier = overTierIdx === tierIdx && dragTierIdx !== tierIdx;
             return (
-              <div key={tier.id} style={{ display: "flex", borderBottom: `1px solid ${G.border}`, minHeight: TIER_THUMB + 4 }}>
-                <div style={{
-                  width: 44,
-                  background: tierColor,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 16, fontWeight: "bold", color: "#fff", flexShrink: 0,
-                }}>
+              <div
+                key={tier.id}
+                style={{
+                  display: "flex",
+                  borderBottom: `1px solid ${G.border}`,
+                  borderTop: isOverThisTier ? `2px solid ${G.accent}` : "2px solid transparent",
+                  minHeight: TIER_THUMB + 4,
+                  opacity: isDraggingThisTier ? 0.4 : 1,
+                  transition: "opacity 0.1s, border-color 0.1s",
+                }}
+                onDragOver={(e) => { e.preventDefault(); setOverTierIdx(tierIdx); }}
+                onDrop={(e) => { e.preventDefault(); handleTierRowDrop(tierIdx); }}
+              >
+                <div
+                  draggable
+                  onDragStart={(e) => { e.stopPropagation(); setDragTierIdx(tierIdx); }}
+                  onDragEnd={() => { setDragTierIdx(null); setOverTierIdx(null); }}
+                  title="Drag to reorder tier"
+                  style={{
+                    width: 44,
+                    background: tierColor,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 16, fontWeight: "bold", color: "#fff", flexShrink: 0,
+                    cursor: "grab",
+                    userSelect: "none",
+                    position: "relative",
+                  }}
+                >
                   {tier.label.slice(0, 2)}
+                  <span style={{
+                    position: "absolute", bottom: 4,
+                    fontSize: 10, opacity: 0.6, letterSpacing: 0,
+                    lineHeight: 1,
+                  }}>⠿</span>
                 </div>
                 <div
                   style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: 0, padding: 4, alignContent: "flex-start", minHeight: 52 }}
-                  onDragOver={(e) => { e.preventDefault(); tierOver.current = { tierId: tier.id, idx: tItems.length }; }}
-                  onDrop={(e) => { e.preventDefault(); handleTierDrop(tier.id, tierOver.current.idx); }}
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); tierOver.current = { tierId: tier.id, idx: tItems.length }; }}
+                  onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleTierDrop(tier.id, tierOver.current.idx); }}
                 >
                   {tItems.map((item, i) => (
                     <div
                       key={item.id}
                       draggable
-                      onDragStart={() => { tierDrag.current = { tierId: tier.id, idx: i }; }}
-                      onDragOver={(e) => { e.preventDefault(); tierOver.current = { tierId: tier.id, idx: i }; }}
-                      onDrop={(e) => { e.preventDefault(); handleTierDrop(tier.id, i); }}
+                      onDragStart={(e) => { e.stopPropagation(); tierDrag.current = { tierId: tier.id, idx: i }; }}
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); tierOver.current = { tierId: tier.id, idx: i }; }}
+                      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleTierDrop(tier.id, i); }}
                       style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 8px", cursor: "grab" }}
                     >
                       {item.thumbnail
@@ -293,8 +339,8 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
                     alignContent: "flex-start", minHeight: 72,
                     background: G.surface,
                   }}
-                  onDragOver={(e) => { e.preventDefault(); tierOver.current = { tierId: null, idx: unrankedItems.length }; }}
-                  onDrop={(e) => { e.preventDefault(); handleTierDrop(null, tierOver.current.idx); }}
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); tierOver.current = { tierId: null, idx: unrankedItems.length }; }}
+                  onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleTierDrop(null, tierOver.current.idx); }}
                 >
                   {unrankedItems.length === 0 && (
                     <div style={{
@@ -309,9 +355,9 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
                     <div
                       key={item.id}
                       draggable
-                      onDragStart={() => { tierDrag.current = { tierId: null, idx: i }; }}
-                      onDragOver={(e) => { e.preventDefault(); tierOver.current = { tierId: null, idx: i }; }}
-                      onDrop={(e) => { e.preventDefault(); handleTierDrop(null, i); }}
+                      onDragStart={(e) => { e.stopPropagation(); tierDrag.current = { tierId: null, idx: i }; }}
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); tierOver.current = { tierId: null, idx: i }; }}
+                      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleTierDrop(null, i); }}
                       style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 8px", cursor: "grab", opacity: 0.85 }}
                     >
                       {item.thumbnail
