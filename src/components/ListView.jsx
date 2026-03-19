@@ -74,7 +74,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
     setTierItems(map);
   }, [items, list, listItems]);
 
-  const tierDrag = useRef({ tierId: undefined, idx: null });
+  const tierDrag = useRef({ tierId: undefined, itemId: null });
   const tierOver = useRef({ tierId: undefined, idx: null });
 
   // Tier row reordering
@@ -108,9 +108,8 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
   };
 
   const handleTierDrop = (toTierId, toIdx) => {
-    const { tierId: fromTierId, idx: fromIdx } = tierDrag.current;
-    if (fromTierId === undefined) return;
-    if (fromTierId === toTierId && fromIdx === toIdx) return;
+    const { tierId: fromTierId, itemId } = tierDrag.current;
+    if (fromTierId === undefined || itemId == null) return;
 
     const getItems = (tid) =>
       tid === null
@@ -118,6 +117,10 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
         : [...(tierItems[tid] || [])];
 
     const srcItems = getItems(fromTierId);
+    
+    const fromIdx = srcItems.findIndex((it) => it.id === itemId);
+    if (fromIdx === -1) return;
+    if (fromTierId === toTierId && fromIdx === toIdx) return;
     const [moved] = srcItems.splice(fromIdx, 1);
 
     const destItems = fromTierId === toTierId ? srcItems : getItems(toTierId);
@@ -129,7 +132,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
       srcItems.forEach((it, i) => onItemUpdate({ ...it, tierOrder: i }));
     }
 
-    tierDrag.current = { tierId: undefined, idx: null };
+    tierDrag.current = { tierId: undefined, itemId: null };
     tierOver.current = { tierId: undefined, idx: null };
     setOverTierIdx(null);
   };
@@ -283,7 +286,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
                     <div
                       key={item.id}
                       draggable
-                      onDragStart={(e) => { e.stopPropagation(); tierDrag.current = { tierId: tier.id, idx: i }; }}
+                      onDragStart={(e) => { e.stopPropagation(); tierDrag.current = { tierId: tier.id, itemId: item.id }; }}
                       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); tierOver.current = { tierId: tier.id, idx: i }; }}
                       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleTierDrop(tier.id, i); }}
                       style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 8px", cursor: "grab" }}
@@ -356,7 +359,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
                     <div
                       key={item.id}
                       draggable
-                      onDragStart={(e) => { e.stopPropagation(); tierDrag.current = { tierId: null, idx: i }; }}
+                      onDragStart={(e) => { e.stopPropagation(); tierDrag.current = { tierId: null, itemId: item.id }; }}
                       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); tierOver.current = { tierId: null, idx: i }; }}
                       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleTierDrop(null, i); }}
                       style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 8px", cursor: "grab", opacity: 0.85 }}
