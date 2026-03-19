@@ -9,8 +9,8 @@ export default function Modal({ title, onClose, children }) {
   }, [onClose]);
 
   return (
-    <div style={css.modal} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={css.modalBox}>
+    <div style={{ ...css.modal, cursor: "default" }} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div style={{ ...css.modalBox, cursor: "default" }}>
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           marginBottom: 20, paddingBottom: 12, borderBottom: `1px solid ${G.border}`,

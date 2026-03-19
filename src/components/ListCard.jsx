@@ -83,17 +83,19 @@ export default function ListCard({ list, itemCount, onSelect, onUpdate, onDelete
       </div>
 
       {/* Modals */}
-      {modal === "editList" && (
-        <ListFormModal
-          list={list}
-          tabId={list.tabId}
-          onSave={(updated) => { onUpdate(updated); setModal(null); }}
-          onClose={() => setModal(null)}
-        />
-      )}
-      {modal?.type === "confirm" && (
-        <ConfirmModal message={modal.msg} onConfirm={modal.fn} onClose={() => setModal(null)} />
-      )}
+      <div onClick={(e) => e.stopPropagation()}>
+        {modal === "editList" && (
+          <ListFormModal
+            list={list}
+            tabId={list.tabId}
+            onSave={(updated) => { onUpdate(updated); setModal(null); }}
+            onClose={() => setModal(null)}
+          />
+        )}
+        {modal?.type === "confirm" && (
+          <ConfirmModal message={modal.msg} onConfirm={modal.fn} onClose={() => setModal(null)} />
+        )}
+      </div>
     </div>
   );
 }
