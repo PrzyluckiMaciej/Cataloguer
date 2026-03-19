@@ -105,27 +105,29 @@ export default function ThumbnailCropper({ imageSrc, onCrop, onCancel }) {
       let x = sc.x, y = sc.y, size = sc.size;
 
       if (ds.corner === "br") {
-        // anchor: top-left — grow right and down
         size = Math.max(MIN_SIZE, Math.min(sc.size + dx, sc.size + dy, dw - sc.x, dh - sc.y));
+
       } else if (ds.corner === "bl") {
-        // anchor: top-right — grow left and down
-        const maxGrow = Math.min(sc.x, dh - sc.y - sc.size);
-        const d = Math.max(-maxGrow, Math.min(-dx, dy, sc.size - MIN_SIZE));
-        size = sc.size + d;
-        x = sc.x - d;
+        // drag left shrinks x, drag down grows; take the smaller of the two deltas
+        const d = Math.min(-dx, dy);
+        const clamped = Math.max(MIN_SIZE - sc.size, Math.min(d, sc.x, dh - sc.y - sc.size));
+        size = sc.size + clamped;
+        x = sc.x - clamped;
+
       } else if (ds.corner === "tr") {
-        // anchor: bottom-left — grow right and up
-        const maxGrow = Math.min(sc.y, dw - sc.x - sc.size);
-        const d = Math.max(-maxGrow, Math.min(dx, -dy, sc.size - MIN_SIZE));
-        size = sc.size + d;
-        y = sc.y - d;
+        // drag right grows, drag up shrinks; take the smaller of the two deltas
+        const d = Math.min(dx, -dy);
+        const clamped = Math.max(MIN_SIZE - sc.size, Math.min(d, dw - sc.x - sc.size, sc.y));
+        size = sc.size + clamped;
+        y = sc.y - clamped;
+
       } else if (ds.corner === "tl") {
-        // anchor: bottom-right — grow left and up
-        const maxGrow = Math.min(sc.x, sc.y);
-        const d = Math.max(-maxGrow, Math.min(-dx, -dy, sc.size - MIN_SIZE));
-        size = sc.size + d;
-        x = sc.x - d;
-        y = sc.y - d;
+        // drag left and up both shrink; take the smaller of the two deltas
+        const d = Math.min(-dx, -dy);
+        const clamped = Math.max(MIN_SIZE - sc.size, Math.min(d, sc.x, sc.y));
+        size = sc.size + clamped;
+        x = sc.x - clamped;
+        y = sc.y - clamped;
       }
 
       updateCrop(clampCrop({ x, y, size }, dw, dh));
