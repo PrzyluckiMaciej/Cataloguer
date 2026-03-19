@@ -8,13 +8,17 @@ A personal item cataloguing app built with React. Organise anything into lists, 
 
 - **Tabs → Lists → Items** hierarchy — tabs act as top-level sections, each containing any number of lists
 - **Three list types**
-  - *Numbered* — ordered ranking with rank numbers
+  - *Numbered* — ordered ranking with rank numbers shown per item
   - *Unranked* — simple collection with no ranking
-  - *Tiered* — S/A/B/C/D tier grid, items dragged between tiers (tiers are renameable)
-- **Grid or row view** — toggle between a card grid and a row layout per list; grid column count (2–6) is adjustable and saved per list
-- **Drag and drop** — reorder items within a list, and reorder lists within a tab
-- **Item images** — each item supports a thumbnail and a gallery of additional images; clicking the gallery opens a full-screen lightbox with filmstrip navigation and keyboard arrow support
-- **Inline renaming** — double-click any tab or list name to rename it in place
+  - *Tiered* — tier grid (S/A/B/C/D by default); items are dragged between tiers; tiers are fully renameable, reorderable, and individually coloured
+- **Grid or row view** — toggle between a card grid and a row layout per list; grid column count (2–6) is adjustable and persisted per list
+- **Item search** — filter items within a list by name in real time; drag-and-drop is disabled while a search is active
+- **Drag and drop** — reorder items within a list, reorder lists within a tab, and reorder tier rows within a tiered list
+- **List duplication** — duplicate any list along with all its items in one click
+- **Item positioning** — when editing an item you can set its exact position (1 to N) within the list
+- **Item images** — each item supports a thumbnail (with a built-in crop tool) and a gallery of additional images; the gallery opens a full-screen lightbox with filmstrip navigation and keyboard arrow support
+- **Inline renaming** — double-click any tab or list name to rename it in place; a pencil button offers an alternative modal rename for tabs
+- **Custom scrollbar** — a styled overlay scrollbar that matches the app's dark aesthetic, visible on hover/scroll and hidden when content fits without scrolling
 - **Export / Import** — back up all data (including images) as a single JSON file and restore it at any time
 
 ---
@@ -40,7 +44,7 @@ The app runs at `http://localhost:3000`.
 
 ## Storage
 
-All data is stored in the browser's **IndexedDB** — no backend or database setup required. Data persists across page refreshes and browser restarts.
+All data is stored in the browser's **IndexedDB** — no backend or database setup required. Data persists across page refreshes and browser restarts. Saves are debounced (500 ms after the last change) to avoid unnecessary writes.
 
 > **Note:** IndexedDB data is tied to the browser profile. To avoid data loss, use the **Export** button in the top bar regularly to save a JSON backup.
 
@@ -50,24 +54,26 @@ All data is stored in the browser's **IndexedDB** — no backend or database set
 
 ```
 src/
-├── App.jsx              # Thin orchestrator — wires hooks and top-level components
-├── useAppState.js       # All state, IndexedDB persistence, and CRUD operations
-├── useDataIO.js         # Export to JSON and import from JSON
-├── db.js                # IndexedDB read/write wrapper
-├── helpers.js           # uid(), fileToBase64(), constants, initial state
-├── styles.js            # Design tokens and shared style objects
+├── App.jsx                  # Thin orchestrator — wires hooks and top-level components
+├── useAppState.js           # All state, IndexedDB persistence, and CRUD operations
+├── useDataIO.js             # Export to JSON and import from JSON
+├── db.js                    # IndexedDB read/write wrapper
+├── helpers.js               # uid(), fileToBase64(), constants, initial state
+├── styles.js                # Design tokens and shared style objects
 └── components/
-    ├── TopBar.jsx        # Nav bar — tabs, + Tab button, export/import
-    ├── TabView.jsx       # Breadcrumb header, tab overview, list detail view
-    ├── Modal.jsx         # Base modal wrapper
-    ├── EditableText.jsx  # Double-click inline text editing
-    ├── ListCard.jsx      # List summary row shown on the tab overview
-    ├── ListView.jsx      # Full list view with grid/row toggle and drag-and-drop
-    ├── ItemCard.jsx      # Item row card (row view)
-    ├── ItemGridCard.jsx  # Item card (grid view, hover actions)
-    ├── GalleryModal.jsx  # Full-screen image lightbox
-    ├── ItemFormModal.jsx # Create/edit item form
-    ├── ListFormModal.jsx # Create/edit list form
-    ├── NameFormModal.jsx # Simple name input modal (tabs)
-    └── ConfirmModal.jsx  # Delete confirmation dialog
+    ├── TopBar.jsx            # Nav bar — tabs, + Tab button, export/import
+    ├── TabView.jsx           # Breadcrumb header, tab overview, list detail view
+    ├── Modal.jsx             # Base modal wrapper (Escape to close, backdrop click to close)
+    ├── EditableText.jsx      # Double-click inline text editing
+    ├── CustomScrollbar.jsx   # Overlay scrollbar — cross-browser, hides when not needed
+    ├── ListCard.jsx          # List summary row shown on the tab overview
+    ├── ListView.jsx          # Full list view — grid/row toggle, search, drag-and-drop
+    ├── ItemCard.jsx          # Item row card (row view)
+    ├── ItemGridCard.jsx      # Item card (grid view, hover actions)
+    ├── GalleryModal.jsx      # Full-screen image lightbox with filmstrip and keyboard nav
+    ├── ItemFormModal.jsx     # Create/edit item form — name, position, thumbnail, images
+    ├── ListFormModal.jsx     # Create/edit list form — name, type, tier configuration
+    ├── ThumbnailCropper.jsx  # Square crop tool for item thumbnails
+    ├── NameFormModal.jsx     # Simple name input modal (used for tabs)
+    └── ConfirmModal.jsx      # Delete confirmation dialog
 ```
