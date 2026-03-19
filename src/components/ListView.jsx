@@ -250,7 +250,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
                   opacity: isDraggingThisTier ? 0.4 : 1,
                   transition: "opacity 0.1s, border-color 0.1s",
                 }}
-                onDragOver={(e) => { e.preventDefault(); setOverTierIdx(tierIdx); }}
+                onDragOver={(e) => { e.preventDefault(); if (dragTierIdx !== null) setOverTierIdx(tierIdx); }}
                 onDrop={(e) => { e.preventDefault(); handleTierRowDrop(tierIdx); }}
                 onDragEnd={() => { setDragTierIdx(null); setOverTierIdx(null); }}
                 onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOverTierIdx(null); }}
