@@ -123,16 +123,15 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
     const destItems = fromTierId === toTierId ? srcItems : getItems(toTierId);
     destItems.splice(toIdx, 0, moved);
 
-    // Save the full reordered destination with tierOrder, plus tierId change if crossing tiers
     destItems.forEach((it, i) => onItemUpdate({ ...it, tierId: toTierId ?? null, tierOrder: i }));
 
-    // If moving between tiers, also rewrite the source tier's order
     if (fromTierId !== toTierId) {
       srcItems.forEach((it, i) => onItemUpdate({ ...it, tierOrder: i }));
     }
 
     tierDrag.current = { tierId: undefined, idx: null };
     tierOver.current = { tierId: undefined, idx: null };
+    setOverTierIdx(null);
   };
 
   const handleItemSave = (item, reorderedItems) => {
@@ -250,6 +249,8 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
                 }}
                 onDragOver={(e) => { e.preventDefault(); setOverTierIdx(tierIdx); }}
                 onDrop={(e) => { e.preventDefault(); handleTierRowDrop(tierIdx); }}
+                onDragEnd={() => { setDragTierIdx(null); setOverTierIdx(null); }}
+                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOverTierIdx(null); }}
               >
                 <div
                   draggable
@@ -455,6 +456,8 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
                 }
               });
             }
+            setDragTierIdx(null);
+            setOverTierIdx(null);
             onUpdate(updated);
             setModal(null);
           }}
