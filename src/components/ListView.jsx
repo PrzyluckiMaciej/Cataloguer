@@ -55,14 +55,22 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
   const [tierItems, setTierItems] = useState(() => {
     if (list.type !== "tiered") return {};
     const map = {};
-    list.tiers.forEach((t) => { map[t.id] = listItems.filter((it) => it.tierId === t.id); });
+    list.tiers.forEach((t) => {
+      map[t.id] = listItems
+        .filter((it) => it.tierId === t.id)
+        .sort((a, b) => (a.tierOrder ?? 0) - (b.tierOrder ?? 0));
+    });
     return map;
   });
 
   useEffect(() => {
     if (list.type !== "tiered") return;
     const map = {};
-    list.tiers.forEach((t) => { map[t.id] = listItems.filter((it) => it.tierId === t.id); });
+    list.tiers.forEach((t) => {
+      map[t.id] = listItems
+        .filter((it) => it.tierId === t.id)
+        .sort((a, b) => (a.tierOrder ?? 0) - (b.tierOrder ?? 0));
+    });
     setTierItems(map);
   }, [items, list]);
 
@@ -83,17 +91,28 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
 
   const handleTierDrop = (toTierId, toIdx) => {
     const { tierId: fromTierId, idx: fromIdx } = tierDrag.current;
-    if (fromTierId === undefined) return; // nothing being dragged
+    if (fromTierId === undefined) return;
     if (fromTierId === toTierId && fromIdx === toIdx) return;
+
     const getItems = (tid) =>
       tid === null
-        ? listItems.filter((it) => !it.tierId)
-        : (tierItems[tid] || []);
-    const srcItems = [...getItems(fromTierId)];
+        ? [...listItems.filter((it) => !it.tierId)].sort((a, b) => (a.tierOrder ?? 0) - (b.tierOrder ?? 0))
+        : [...(tierItems[tid] || [])];
+
+    const srcItems = getItems(fromTierId);
     const [moved] = srcItems.splice(fromIdx, 1);
-    const destItems = fromTierId === toTierId ? srcItems : [...getItems(toTierId)];
+
+    const destItems = fromTierId === toTierId ? srcItems : getItems(toTierId);
     destItems.splice(toIdx, 0, moved);
-    onItemUpdate({ ...moved, tierId: toTierId ?? null });
+
+    // Save the full reordered destination with tierOrder, plus tierId change if crossing tiers
+    destItems.forEach((it, i) => onItemUpdate({ ...it, tierId: toTierId ?? null, tierOrder: i }));
+
+    // If moving between tiers, also rewrite the source tier's order
+    if (fromTierId !== toTierId) {
+      srcItems.forEach((it, i) => onItemUpdate({ ...it, tierOrder: i }));
+    }
+
     tierDrag.current = { tierId: undefined, idx: null };
     tierOver.current = { tierId: undefined, idx: null };
   };
