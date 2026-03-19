@@ -9,6 +9,7 @@ import GalleryModal from "./GalleryModal";
 import ConfirmModal from "./ConfirmModal";
 
 const COL_OPTIONS = [2, 3, 4, 5, 6];
+const TIER_THUMB = 100; // thumbnail size for tiered list items
 
 function ViewToggle({ value, onChange }) {
   const btn = (mode, label, title) => (
@@ -198,7 +199,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
             const tierColor = tier.color || G.tierColors?.[tier.label] || G.accentDim;
             const tItems = tierItems[tier.id] || [];
             return (
-              <div key={tier.id} style={{ display: "flex", borderBottom: `1px solid ${G.border}`, minHeight: 52 }}>
+              <div key={tier.id} style={{ display: "flex", borderBottom: `1px solid ${G.border}`, minHeight: TIER_THUMB + 4 }}>
                 <div style={{
                   width: 44,
                   background: tierColor,
@@ -222,10 +223,10 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
                       style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 8px", cursor: "grab" }}
                     >
                       {item.thumbnail
-                        ? <img src={item.thumbnail} alt="" style={{ width: 48, height: 48, objectFit: "cover", border: `1px solid ${G.border}` }} />
-                        : <div style={{ width: 48, height: 48, background: G.surfaceHigh, border: `1px solid ${G.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: G.textDim, fontSize: 9 }}>IMG</div>
+                        ? <img src={item.thumbnail} alt="" style={{ width: TIER_THUMB, height: TIER_THUMB, objectFit: "cover", border: `1px solid ${G.border}` }} />
+                        : <div style={{ width: TIER_THUMB, height: TIER_THUMB, background: G.surfaceHigh, border: `1px solid ${G.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: G.textDim, fontSize: 9 }}>IMG</div>
                       }
-                      <span style={{ fontSize: 10, color: G.textMuted, maxWidth: 60, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>{item.name}</span>
+                      <span style={{ fontSize: 10, color: G.textMuted, maxWidth: TIER_THUMB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>{item.name}</span>
                       <div style={{ display: "flex", gap: 2 }}>
                         {item.images?.length > 0 && (
                           <button style={{ ...css.iconBtn(false), fontSize: 9, padding: "1px 3px" }} onClick={() => setModal({ type: "gallery", item })}>⧉</button>
@@ -295,10 +296,10 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
                       style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 8px", cursor: "grab", opacity: 0.85 }}
                     >
                       {item.thumbnail
-                        ? <img src={item.thumbnail} alt="" style={{ width: 48, height: 48, objectFit: "cover", border: `1px solid ${G.border}` }} />
-                        : <div style={{ width: 48, height: 48, background: G.surfaceHigh, border: `1px solid ${G.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: G.textDim, fontSize: 9 }}>IMG</div>
+                        ? <img src={item.thumbnail} alt="" style={{ width: TIER_THUMB, height: TIER_THUMB, objectFit: "cover", border: `1px solid ${G.border}` }} />
+                        : <div style={{ width: TIER_THUMB, height: TIER_THUMB, background: G.surfaceHigh, border: `1px solid ${G.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: G.textDim, fontSize: 9 }}>IMG</div>
                       }
-                      <span style={{ fontSize: 10, color: G.textMuted, maxWidth: 60, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>{item.name}</span>
+                      <span style={{ fontSize: 10, color: G.textMuted, maxWidth: TIER_THUMB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>{item.name}</span>
                       <div style={{ display: "flex", gap: 2 }}>
                         {item.images?.length > 0 && (
                           <button style={{ ...css.iconBtn(false), fontSize: 9, padding: "1px 3px" }} onClick={() => setModal({ type: "gallery", item })}>⧉</button>
