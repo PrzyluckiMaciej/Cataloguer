@@ -22,6 +22,7 @@ export default function TabView({
   onDuplicateList,
   onCreateItem,
   onUpdateItem,
+  onUpdateItems,
   onDeleteItem,
 }) {
   const [modal, setModal] = useState(null);
@@ -127,6 +128,7 @@ export default function TabView({
             onDelete={() => onDeleteList(activeList.id)}
             onItemCreate={onCreateItem}
             onItemUpdate={onUpdateItem}
+            onItemsUpdate={onUpdateItems}
             onItemDelete={onDeleteItem}
           />
         </div>

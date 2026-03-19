@@ -39,7 +39,7 @@ function ViewToggle({ value, onChange }) {
   );
 }
 
-export default function ListView({ list, items, onUpdate, onDelete, onItemCreate, onItemUpdate, onItemDelete }) {
+export default function ListView({ list, items, onUpdate, onDelete, onItemCreate, onItemUpdate, onItemsUpdate, onItemDelete }) {
   const [modal, setModal] = useState(null);
   const [dragIdx, setDragIdx] = useState(null);
   const [overIdx, setOverIdx] = useState(null);
@@ -102,7 +102,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
     const reordered = [...sorted];
     const [moved] = reordered.splice(dragIdx, 1);
     reordered.splice(dropIdx, 0, moved);
-    reordered.forEach((it, i) => onItemUpdate({ ...it, order: i }));
+    onItemsUpdate(reordered.map((it, i) => ({ ...it, order: i })));
     setDragIdx(null);
     setOverIdx(null);
   };
@@ -126,11 +126,11 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
     const destItems = fromTierId === toTierId ? srcItems : getItems(toTierId);
     destItems.splice(toIdx, 0, moved);
 
-    destItems.forEach((it, i) => onItemUpdate({ ...it, tierId: toTierId ?? null, tierOrder: i }));
-
+    const batchUpdates = destItems.map((it, i) => ({ ...it, tierId: toTierId ?? null, tierOrder: i }));
     if (fromTierId !== toTierId) {
-      srcItems.forEach((it, i) => onItemUpdate({ ...it, tierOrder: i }));
+      srcItems.forEach((it, i) => batchUpdates.push({ ...it, tierOrder: i }));
     }
+    onItemsUpdate(batchUpdates);
 
     tierDrag.current = { tierId: undefined, itemId: null };
     tierOver.current = { tierId: undefined, idx: null };
@@ -139,7 +139,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
 
   const handleItemSave = (item, reorderedItems) => {
     if (reorderedItems) {
-      reorderedItems.forEach((it) => onItemUpdate(it));
+      onItemsUpdate(reorderedItems);
     } else {
       onItemUpdate(item);
     }

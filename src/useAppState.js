@@ -7,6 +7,7 @@ export function useAppState() {
   const [activeTabId, setActiveTabId] = useState(null);
   const [activeListId, setActiveListId] = useState(null);
   const saving = useRef(false);
+  const persistTimer = useRef(null);
 
   // Load from IndexedDB on mount
   useEffect(() => {
@@ -28,11 +29,15 @@ export function useAppState() {
       });
   }, []);
 
-  // Persist to IndexedDB on every state change
   useEffect(() => {
-    if (!state || saving.current) return;
-    saving.current = true;
-    dbSet("appState", state).finally(() => { saving.current = false; });
+    if (!state) return;
+    if (persistTimer.current) clearTimeout(persistTimer.current);
+    persistTimer.current = setTimeout(() => {
+      if (saving.current) return;
+      saving.current = true;
+      dbSet("appState", state).finally(() => { saving.current = false; });
+    }, 500);
+    return () => clearTimeout(persistTimer.current);
   }, [state]);
 
   const update = useCallback((fn) => setState((prev) => fn(prev)), []);
@@ -104,6 +109,11 @@ export function useAppState() {
   const updateItem = (item) =>
     update((s) => ({ ...s, items: s.items.map((it) => (it.id === item.id ? item : it)) }));
 
+  const updateItems = (updatedItems) => {
+    const map = new Map(updatedItems.map((it) => [it.id, it]));
+    update((s) => ({ ...s, items: s.items.map((it) => map.has(it.id) ? map.get(it.id) : it) }));
+  };
+
   const deleteItem = (id) =>
     update((s) => ({ ...s, items: s.items.filter((it) => it.id !== id) }));
 
@@ -116,6 +126,6 @@ export function useAppState() {
     switchTab,
     createTab, updateTab, deleteTab,
     createList, updateList, deleteList, duplicateList,
-    createItem, updateItem, deleteItem,
+    createItem, updateItem, updateItems, deleteItem,
   };
 }

@@ -11,7 +11,7 @@ export default function App() {
     switchTab,
     createTab, updateTab, deleteTab,
     createList, updateList, deleteList, duplicateList,
-    createItem, updateItem, deleteItem,
+    createItem, updateItem, updateItems, deleteItem,
   } = useAppState();
 
   const { importRef, importError, handleExport, handleImport, clearImportError } = useDataIO(
@@ -73,6 +73,7 @@ export default function App() {
           onDuplicateList={duplicateList}
           onCreateItem={createItem}
           onUpdateItem={updateItem}
+          onUpdateItems={updateItems}
           onDeleteItem={deleteItem}
         />
       )}
