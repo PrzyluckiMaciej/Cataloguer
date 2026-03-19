@@ -3,6 +3,7 @@ import { useAppState } from "./useAppState";
 import { useDataIO } from "./useDataIO";
 import TopBar from "./components/TopBar";
 import TabView from "./components/TabView";
+import CustomScrollbar from "./components/CustomScrollbar";
 
 export default function App() {
   const {
@@ -38,7 +39,7 @@ export default function App() {
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   return (
-    <div style={css.app}>
+    <div style={{ ...css.app, height: "100vh", overflow: "hidden" }}>
 
       <TopBar
         tabs={state.tabs}
@@ -57,26 +58,28 @@ export default function App() {
         </div>
       )}
 
-      {activeTab && (
-        <TabView
-          state={state}
-          activeTab={activeTab}
-          activeList={activeList}
-          tabLists={tabLists}
-          activeTabId={activeTabId}
-          onSetActiveList={setActiveListId}
-          onUpdateTab={updateTab}
-          onDeleteTab={deleteTab}
-          onCreateList={createList}
-          onUpdateList={updateList}
-          onDeleteList={deleteList}
-          onDuplicateList={duplicateList}
-          onCreateItem={createItem}
-          onUpdateItem={updateItem}
-          onUpdateItems={updateItems}
-          onDeleteItem={deleteItem}
-        />
-      )}
+      <CustomScrollbar style={{ flex: 1 }}>
+        {activeTab && (
+          <TabView
+            state={state}
+            activeTab={activeTab}
+            activeList={activeList}
+            tabLists={tabLists}
+            activeTabId={activeTabId}
+            onSetActiveList={setActiveListId}
+            onUpdateTab={updateTab}
+            onDeleteTab={deleteTab}
+            onCreateList={createList}
+            onUpdateList={updateList}
+            onDeleteList={deleteList}
+            onDuplicateList={duplicateList}
+            onCreateItem={createItem}
+            onUpdateItem={updateItem}
+            onUpdateItems={updateItems}
+            onDeleteItem={deleteItem}
+          />
+        )}
+      </CustomScrollbar>
 
     </div>
   );

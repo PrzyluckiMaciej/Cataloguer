@@ -67,12 +67,12 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
     if (list.type !== "tiered") return;
     const map = {};
     list.tiers.forEach((t) => {
-      map[t.id] = listItems
-        .filter((it) => it.tierId === t.id)
+      map[t.id] = items
+        .filter((it) => it.listId === list.id && it.tierId === t.id)
         .sort((a, b) => (a.tierOrder ?? 0) - (b.tierOrder ?? 0));
     });
     setTierItems(map);
-  }, [items, list, listItems]);
+  }, [items, list]);
 
   const tierDrag = useRef({ tierId: undefined, itemId: null });
   const tierOver = useRef({ tierId: undefined, idx: null });
