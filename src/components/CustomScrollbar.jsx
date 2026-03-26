@@ -15,7 +15,7 @@ export default function CustomScrollbar({ children, style = {}, className }) {
 
   const dragStart = useRef(null);
 
-  // Compute visibility from viewport alone — no thumb ref needed
+  // Compute visibility from viewport
   const computeVisibility = useCallback(() => {
     const el = viewportRef.current;
     if (!el) return;
@@ -23,7 +23,7 @@ export default function CustomScrollbar({ children, style = {}, className }) {
     setVisible(hasScroll);
   }, []);
 
-  // Position the thumb directly on the DOM — only runs when thumb is mounted
+  // Position the thumb directly on the DOM
   const positionThumb = useCallback(() => {
     const el = viewportRef.current;
     const thumb = thumbRef.current;
@@ -66,7 +66,6 @@ export default function CustomScrollbar({ children, style = {}, className }) {
     };
   }, [computeVisibility, positionThumb, debouncedUpdate]);
 
-  // Re-position thumb after visible becomes true (thumb just mounted)
   useEffect(() => {
     if (visible) positionThumb();
   }, [visible, positionThumb]);

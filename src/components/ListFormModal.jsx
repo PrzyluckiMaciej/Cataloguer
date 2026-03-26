@@ -106,7 +106,7 @@ export default function ListFormModal({ list, tabId, onSave, onClose }) {
     list?.tiers
       ? list.tiers.map((t, i) => ({
           color: DEFAULT_TIER_COLORS[i] || "#7a7a7a",
-          ...t,  // existing color (if any) wins
+          ...t, 
         }))
       : DEFAULT_TIERS.map((t, i) => ({ id: uid(), label: t, color: DEFAULT_TIER_COLORS[i] || "#7a7a7a" }))
   );

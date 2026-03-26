@@ -5,10 +5,6 @@ import Modal from "./Modal";
 import ThumbnailCropper from "./ThumbnailCropper";
 import { parseVideoUrl, PlatformIcon } from "./VideoEmbed";
 
-// A video entry is either:
-//   { kind: "url",    src: "https://..." }
-//   { kind: "upload", src: "data:video/...", name: "filename.mp4" }
-// For backward compat, plain strings are treated as URLs.
 export function normalizeVideo(v) {
   if (typeof v === "string") return { kind: "url", src: v };
   return v;
@@ -49,7 +45,6 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
 
   const removeImage = (i) => setImages((prev) => prev.filter((_, j) => j !== i));
 
-  // ── Video: URL ─────────────────────────────────────────────────────────────
   const addVideoUrl = () => {
     const url = videoInput.trim();
     if (!url) return;
@@ -70,7 +65,6 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
     if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); addVideoUrl(); }
   };
 
-  // ── Video: file upload ─────────────────────────────────────────────────────
   const handleVideoFiles = async (e) => {
     const files = Array.from(e.target.files);
     e.target.value = "";
@@ -87,7 +81,6 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
 
   const removeVideo = (i) => setVideos((prev) => prev.filter((_, j) => j !== i));
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
   const submit = useCallback(() => {
     if (!name.trim()) return;
     const saved = {
@@ -95,7 +88,7 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
       name: name.trim(),
       thumbnail,
       images,
-      videos, // stored as array of { kind, src, name? }
+      videos,
       listId,
       order: item?.order,
     };

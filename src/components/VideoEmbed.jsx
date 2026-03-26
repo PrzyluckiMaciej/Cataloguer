@@ -1,7 +1,5 @@
 import { G } from "../styles";
 
-// ─── URL parsers ─────────────────────────────────────────────────────────────
-
 function parseVideoUrl(url) {
   if (!url) return null;
 
@@ -75,8 +73,6 @@ function FacebookEmbed({ id }) {
   );
 }
 
-// ─── Main export ─────────────────────────────────────────────────────────────
-
 export default function VideoEmbed({ url, style = {}, aspectRatio = "16/9" }) {
   const parsed = parseVideoUrl(url);
 
@@ -108,5 +104,4 @@ export default function VideoEmbed({ url, style = {}, aspectRatio = "16/9" }) {
   );
 }
 
-// ─── Re-export helpers for use in other components ───────────────────────────
 export { parseVideoUrl, PlatformIcon };

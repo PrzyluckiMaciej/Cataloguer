@@ -3,7 +3,6 @@ import { G } from "../styles";
 import Modal from "./Modal";
 import VideoEmbed, { parseVideoUrl, PlatformIcon } from "./VideoEmbed";
 
-// Normalize a video entry — backward compat with plain strings
 function normalizeVideo(v) {
   if (typeof v === "string") return { kind: "url", src: v };
   return v;
@@ -20,10 +19,9 @@ function buildMediaList(item) {
 function FilmStrip({ media, idx, onSelect }) {
   const stripRef      = useRef(null);
   const activeRef     = useRef(null);
-  const dragOrigin    = useRef(null);   // { x, scrollLeft } at mousedown
-  const didDrag       = useRef(false);  // true if mouse moved enough to count as a drag
+  const dragOrigin    = useRef(null);
+  const didDrag       = useRef(false);
 
-  // Scroll active thumb into view whenever idx changes
   useEffect(() => {
     const strip = stripRef.current;
     const thumb = activeRef.current;
@@ -35,7 +33,7 @@ function FilmStrip({ media, idx, onSelect }) {
     strip.scrollTo({ left: scrollLeft, behavior: "smooth" });
   }, [idx]);
 
-  // Mouse-drag scrolling on the strip itself
+  // Mouse-drag scrolling on the strip
   const onStripMouseDown = (e) => {
     e.preventDefault();
     const strip = stripRef.current;
@@ -56,7 +54,7 @@ function FilmStrip({ media, idx, onSelect }) {
   const onStripMouseUp = () => { dragOrigin.current = null; };
 
   const handleThumbClick = (i) => {
-    if (didDrag.current) return; // swallow click if user was scrolling
+    if (didDrag.current) return;
     onSelect(i);
   };
 
@@ -279,9 +277,9 @@ export default function GalleryModal({ item, onClose }) {
         onDoubleClick={!isVideo ? resetZoom : undefined}
       >
         {isUpload ? (
-          /* Uploaded video file — native <video> player */
+          /* Uploaded video file */
           <video
-            key={current.src.slice(0, 64)} // key on start of src to remount on slide change
+            key={current.src.slice(0, 64)}
             src={current.src}
             controls
             style={{

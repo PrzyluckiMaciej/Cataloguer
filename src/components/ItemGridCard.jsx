@@ -11,7 +11,6 @@ export default function ItemGridCard({
 
   const hasMedia = (item.images?.length > 0) || (item.videos?.length > 0);
 
-  // Build a short label like "2 img · 1 vid" or just "3 img"
   const mediaLabel = (() => {
     const parts = [];
     if (item.images?.length > 0) parts.push(`${item.images.length} img`);
