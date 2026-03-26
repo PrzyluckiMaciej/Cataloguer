@@ -1,77 +1,75 @@
 import { useState, useEffect, useRef } from "react";
 import { G } from "../styles";
 import Modal from "./Modal";
+import VideoEmbed, { parseVideoUrl, PlatformIcon } from "./VideoEmbed";
+
+// Normalize a video entry — backward compat with plain strings
+function normalizeVideo(v) {
+  if (typeof v === "string") return { kind: "url", src: v };
+  return v;
+}
+
+// Build a unified media list: each entry is { type: "image"|"video", src, kind?, name? }
+function buildMediaList(item) {
+  const list = [];
+  (item.images || []).forEach((src) => list.push({ type: "image", src }));
+  (item.videos || []).map(normalizeVideo).forEach((v) => list.push({ type: "video", ...v }));
+  return list;
+}
 
 export default function GalleryModal({ item, onClose }) {
-  const [idx, setIdx] = useState(0);
-  const images = item.images || [];
-  
-  // Zoom state
-  const [scale, setScale] = useState(1);
+  const media = buildMediaList(item);
+
+  const [idx, setIdx]           = useState(0);
+  const [scale, setScale]       = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const imageContainerRef = useRef(null);
-  const imageRef = useRef(null);
+  const [dragStart, setDragStart]   = useState({ x: 0, y: 0 });
 
-  // Keyboard navigation
+  const imageContainerRef = useRef(null);
+  const imageRef          = useRef(null);
+
+  const current = media[idx] || null;
+  const isVideo  = current?.type === "video";
+  const isUpload = isVideo && current?.kind === "upload";
+  const parsed   = isVideo && !isUpload ? parseVideoUrl(current.src) : null;
+
+  // Keyboard nav
   useEffect(() => {
     const handler = (e) => {
-      if (e.key === "ArrowRight") {
-        resetZoom();
-        setIdx((i) => (i + 1) % images.length);
-      }
-      if (e.key === "ArrowLeft") {
-        resetZoom();
-        setIdx((i) => (i - 1 + images.length) % images.length);
-      }
+      if (e.key === "ArrowRight") { resetZoom(); setIdx((i) => (i + 1) % media.length); }
+      if (e.key === "ArrowLeft")  { resetZoom(); setIdx((i) => (i - 1 + media.length) % media.length); }
       if (e.key === "Escape") {
-        if (scale > 1) {
-          resetZoom();
-        } else {
-          onClose();
-        }
+        if (scale > 1) resetZoom();
+        else onClose();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [images.length, scale, onClose]);
+  }, [media.length, scale, onClose]);
 
-  // Reset zoom when changing images
-  useEffect(() => {
-    resetZoom();
-  }, [idx]);
+  useEffect(() => { resetZoom(); }, [idx]);
 
-  const resetZoom = () => {
-    setScale(1);
-    setPosition({ x: 0, y: 0 });
-  };
+  const resetZoom = () => { setScale(1); setPosition({ x: 0, y: 0 }); };
 
+  // Zoom (image only)
   const handleWheel = (e) => {
+    if (current?.type !== "image") return;
     e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const delta    = e.deltaY > 0 ? 0.9 : 1.1;
     const newScale = Math.min(4, Math.max(1, scale * delta));
-    
     if (newScale !== scale) {
-      // Calculate zoom center based on mouse position
       const rect = imageContainerRef.current?.getBoundingClientRect();
       if (rect && newScale > 1) {
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        const imageRect = imageRef.current?.getBoundingClientRect();
-        if (imageRect) {
-          const dx = mouseX - (rect.width / 2);
-          const dy = mouseY - (rect.height / 2);
-          setPosition(prev => ({
-            x: prev.x - dx * (newScale - scale) / scale,
-            y: prev.y - dy * (newScale - scale) / scale,
-          }));
-        }
+        const dx = e.clientX - rect.left - rect.width / 2;
+        const dy = e.clientY - rect.top  - rect.height / 2;
+        setPosition((prev) => ({
+          x: prev.x - dx * (newScale - scale) / scale,
+          y: prev.y - dy * (newScale - scale) / scale,
+        }));
       }
       setScale(newScale);
-      if (newScale === 1) {
-        setPosition({ x: 0, y: 0 });
-      }
+      if (newScale === 1) setPosition({ x: 0, y: 0 });
     }
   };
 
@@ -79,10 +77,7 @@ export default function GalleryModal({ item, onClose }) {
     if (scale > 1) {
       e.preventDefault();
       setIsDragging(true);
-      setDragStart({
-        x: e.clientX - position.x,
-        y: e.clientY - position.y,
-      });
+      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
     }
   };
 
@@ -90,36 +85,22 @@ export default function GalleryModal({ item, onClose }) {
     if (isDragging && scale > 1) {
       const newX = e.clientX - dragStart.x;
       const newY = e.clientY - dragStart.y;
-      
-      // Constrain drag bounds
       const containerRect = imageContainerRef.current?.getBoundingClientRect();
-      const imageRect = imageRef.current?.getBoundingClientRect();
+      const imageRect     = imageRef.current?.getBoundingClientRect();
       if (containerRect && imageRect) {
-        const maxX = Math.max(0, (imageRect.width * scale - containerRect.width) / 2);
+        const maxX = Math.max(0, (imageRect.width  * scale - containerRect.width)  / 2);
         const maxY = Math.max(0, (imageRect.height * scale - containerRect.height) / 2);
-        setPosition({
-          x: Math.min(maxX, Math.max(-maxX, newX)),
-          y: Math.min(maxY, Math.max(-maxY, newY)),
-        });
+        setPosition({ x: Math.min(maxX, Math.max(-maxX, newX)), y: Math.min(maxY, Math.max(-maxY, newY)) });
       } else {
         setPosition({ x: newX, y: newY });
       }
     }
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  // Double-click to reset zoom
-  const handleDoubleClick = () => {
-    resetZoom();
-  };
-
-  if (!images.length) {
+  if (!media.length) {
     return (
       <Modal title={item.name} onClose={onClose}>
-        <p style={{ color: G.textMuted, fontStyle: "italic" }}>No images attached.</p>
+        <p style={{ color: G.textMuted, fontStyle: "italic" }}>No media attached.</p>
       </Modal>
     );
   }
@@ -146,25 +127,27 @@ export default function GalleryModal({ item, onClose }) {
           {item.name}
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          {scale > 1 && (
+          {isUpload && (
+            <span style={{ fontSize: 12, color: G.textDim }}>
+              {current.name || "Uploaded video"}
+            </span>
+          )}
+          {isVideo && !isUpload && parsed && (
+            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: G.textDim }}>
+              <PlatformIcon platform={parsed.platform} size={13} />
+              <span style={{ textTransform: "capitalize" }}>{parsed.platform}</span>
+            </span>
+          )}
+          {!isVideo && scale > 1 && (
             <button
               onClick={resetZoom}
-              style={{
-                background: "rgba(255,255,255,0.1)",
-                border: "none",
-                color: G.textMuted,
-                cursor: "pointer",
-                fontSize: 12,
-                padding: "4px 8px",
-                borderRadius: 4,
-              }}
-              title="Reset zoom"
+              style={{ background: "rgba(255,255,255,0.1)", border: "none", color: G.textMuted, cursor: "pointer", fontSize: 12, padding: "4px 8px", borderRadius: 4 }}
             >
               Reset zoom ({Math.round(scale * 100)}%)
             </button>
           )}
           <span style={{ fontSize: 12, color: G.textMuted, letterSpacing: "0.08em" }}>
-            {idx + 1} / {images.length}
+            {idx + 1} / {media.length}
           </span>
           <button
             onClick={onClose}
@@ -173,111 +156,89 @@ export default function GalleryModal({ item, onClose }) {
         </div>
       </div>
 
-      {/* Main image area with zoom/drag */}
-      <div 
+      {/* Main content area */}
+      <div
         ref={imageContainerRef}
-        style={{ 
-          flex: 1, 
-          position: "relative", 
-          display: "flex", 
-          alignItems: "center", 
-          justifyContent: "center", 
+        style={{
+          flex: 1,
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
           overflow: "hidden",
           minHeight: 0,
-          cursor: scale > 1 ? (isDragging ? "grabbing" : "grab") : "default",
+          cursor: (!isVideo && scale > 1) ? (isDragging ? "grabbing" : "grab") : "default",
         }}
-        onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onDoubleClick={handleDoubleClick}
+        onWheel={!isVideo ? handleWheel : undefined}
+        onMouseDown={!isVideo ? handleMouseDown : undefined}
+        onMouseMove={!isVideo ? handleMouseMove : undefined}
+        onMouseUp={() => setIsDragging(false)}
+        onMouseLeave={() => setIsDragging(false)}
+        onDoubleClick={!isVideo ? resetZoom : undefined}
       >
-        <img
-          ref={imageRef}
-          key={idx}
-          src={images[idx]}
-          alt=""
-          draggable={false}
-          style={{
-            maxWidth: scale === 1 ? "100%" : "none",
-            maxHeight: scale === 1 ? "100%" : "none",
-            width: scale > 1 ? "auto" : "auto",
-            height: scale > 1 ? "auto" : "auto",
-            objectFit: "contain",
-            display: "block",
-            transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
-            transition: isDragging ? "none" : "transform 0.1s ease-out",
-            pointerEvents: scale > 1 ? "auto" : "none",
-          }}
-        />
-        
-        {/* Zoom hint */}
-        {scale === 1 && (
-          <div style={{
-            position: "absolute",
-            bottom: 20,
-            right: 20,
-            background: "rgba(0,0,0,0.6)",
-            color: G.textMuted,
-            fontSize: 11,
-            padding: "4px 8px",
-            borderRadius: 4,
-            pointerEvents: "none",
-            zIndex: 10,
-          }}>
-            Scroll to zoom
+        {isUpload ? (
+          /* Uploaded video file — native <video> player */
+          <video
+            key={current.src.slice(0, 64)} // key on start of src to remount on slide change
+            src={current.src}
+            controls
+            style={{
+              maxWidth: "min(900px, 92vw)",
+              maxHeight: "80vh",
+              display: "block",
+              background: "#000",
+            }}
+          />
+        ) : isVideo ? (
+          /* Embedded URL video */
+          <div style={{ width: "min(860px, 92vw)" }}>
+            <VideoEmbed url={current.src} aspectRatio="16/9" />
           </div>
-        )}
-        
-        {scale > 1 && (
-          <div style={{
-            position: "absolute",
-            bottom: 20,
-            right: 20,
-            background: "rgba(0,0,0,0.6)",
-            color: G.textMuted,
-            fontSize: 11,
-            padding: "4px 8px",
-            borderRadius: 4,
-            pointerEvents: "none",
-            zIndex: 10,
-          }}>
-            Drag to pan • Double-click to reset
-          </div>
+        ) : (
+          /* Image with zoom/pan */
+          <>
+            <img
+              ref={imageRef}
+              key={idx}
+              src={current.src}
+              alt=""
+              draggable={false}
+              style={{
+                maxWidth:  scale === 1 ? "100%" : "none",
+                maxHeight: scale === 1 ? "100%" : "none",
+                objectFit: "contain",
+                display: "block",
+                transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+                transition: isDragging ? "none" : "transform 0.1s ease-out",
+                pointerEvents: scale > 1 ? "auto" : "none",
+              }}
+            />
+            {scale === 1 && (
+              <div style={{ position: "absolute", bottom: 20, right: 20, background: "rgba(0,0,0,0.6)", color: G.textMuted, fontSize: 11, padding: "4px 8px", borderRadius: 4, pointerEvents: "none", zIndex: 10 }}>
+                Scroll to zoom
+              </div>
+            )}
+            {scale > 1 && (
+              <div style={{ position: "absolute", bottom: 20, right: 20, background: "rgba(0,0,0,0.6)", color: G.textMuted, fontSize: 11, padding: "4px 8px", borderRadius: 4, pointerEvents: "none", zIndex: 10 }}>
+                Drag to pan · Double-click to reset
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Navigation buttons - hide when zoomed to avoid accidental clicks */}
-      {images.length > 1 && scale === 1 && (
+      {/* Navigation arrows */}
+      {media.length > 1 && scale === 1 && (
         <>
           <button
-            onClick={() => {
-              resetZoom();
-              setIdx((i) => (i - 1 + images.length) % images.length);
-            }}
-            style={{
-              position: "absolute", left: 0, top: 0, bottom: 0, width: 60,
-              background: "transparent", border: "none", color: G.text,
-              cursor: "pointer", fontSize: 28,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              transition: "background 0.15s", zIndex: 5,
-            }}
+            onClick={() => { resetZoom(); setIdx((i) => (i - 1 + media.length) % media.length); }}
+            style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 60, background: "transparent", border: "none", color: G.text, cursor: "pointer", fontSize: 28, display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s", zIndex: 5 }}
             onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
             onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
           >‹</button>
           <button
-            onClick={() => {
-              resetZoom();
-              setIdx((i) => (i + 1) % images.length);
-            }}
-            style={{
-              position: "absolute", right: 0, top: 0, bottom: 0, width: 60,
-              background: "transparent", border: "none", color: G.text,
-              cursor: "pointer", fontSize: 28,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              transition: "background 0.15s", zIndex: 5,
-            }}
+            onClick={() => { resetZoom(); setIdx((i) => (i + 1) % media.length); }}
+            style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 60, background: "transparent", border: "none", color: G.text, cursor: "pointer", fontSize: 28, display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s", zIndex: 5 }}
             onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
             onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
           >›</button>
@@ -285,7 +246,7 @@ export default function GalleryModal({ item, onClose }) {
       )}
 
       {/* Filmstrip */}
-      {images.length > 1 && (
+      {media.length > 1 && (
         <div style={{
           flexShrink: 0,
           display: "flex", gap: 6, padding: "10px 16px",
@@ -293,24 +254,40 @@ export default function GalleryModal({ item, onClose }) {
           borderTop: `1px solid ${G.border}`,
           background: "rgba(0,0,0,0.8)",
         }}>
-          {images.map((src, i) => (
-            <img
-              key={i}
-              src={src}
-              alt=""
-              onClick={() => {
-                resetZoom();
-                setIdx(i);
-              }}
-              style={{
-                width: 60, height: 60, objectFit: "cover",
-                cursor: "pointer", flexShrink: 0,
-                border: i === idx ? `2px solid ${G.accent}` : `2px solid transparent`,
-                opacity: i === idx ? 1 : 0.45,
-                transition: "opacity 0.15s, border-color 0.15s",
-              }}
-            />
-          ))}
+          {media.map((m, i) => {
+            const vNorm   = m.type === "video" ? m : null;
+            const vParsed = vNorm?.kind !== "upload" ? parseVideoUrl(vNorm?.src) : null;
+            return (
+              <div
+                key={i}
+                onClick={() => { resetZoom(); setIdx(i); }}
+                style={{
+                  width: 60, height: 60, flexShrink: 0,
+                  cursor: "pointer",
+                  border: i === idx ? `2px solid ${G.accent}` : `2px solid transparent`,
+                  opacity: i === idx ? 1 : 0.45,
+                  transition: "opacity 0.15s, border-color 0.15s",
+                  overflow: "hidden",
+                  background: G.surfaceHigh,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                {m.type === "image" ? (
+                  <img src={m.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                ) : m.kind === "upload" ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                    <span style={{ fontSize: 18, color: G.textMuted, lineHeight: 1 }}>▶</span>
+                    <span style={{ fontSize: 9, color: G.textDim }}>FILE</span>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                    <PlatformIcon platform={vParsed?.platform || "unknown"} size={18} />
+                    <span style={{ fontSize: 9, color: G.textDim, textTransform: "capitalize" }}>{vParsed?.platform || "video"}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

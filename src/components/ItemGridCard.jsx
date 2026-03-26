@@ -9,6 +9,16 @@ export default function ItemGridCard({
 }) {
   const [hovered, setHovered] = useState(false);
 
+  const hasMedia = (item.images?.length > 0) || (item.videos?.length > 0);
+
+  // Build a short label like "2 img · 1 vid" or just "3 img"
+  const mediaLabel = (() => {
+    const parts = [];
+    if (item.images?.length > 0) parts.push(`${item.images.length} img`);
+    if (item.videos?.length > 0) parts.push(`${item.videos.length} vid`);
+    return parts.join(" · ");
+  })();
+
   return (
     <div
       draggable
@@ -43,6 +53,21 @@ export default function ItemGridCard({
           lineHeight: 1.4,
         }}>
           {rank}
+        </div>
+      )}
+
+      {/* Video indicator badge (top-right) */}
+      {item.videos?.length > 0 && (
+        <div style={{
+          position: "absolute", top: 6, right: 6, zIndex: 2,
+          background: "rgba(0,0,0,0.7)",
+          color: G.accent,
+          fontSize: 9,
+          padding: "2px 5px",
+          letterSpacing: "0.05em",
+          lineHeight: 1.5,
+        }}>
+          ▶ {item.videos.length}
         </div>
       )}
 
@@ -90,12 +115,12 @@ export default function ItemGridCard({
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {item.images?.length > 0 && (
+          {hasMedia && (
             <button
               style={{ ...css.ghostBtn, fontSize: 11, width: "100%" }}
               onClick={() => onGallery()}
             >
-              ⧉ {item.images.length} {item.images.length === 1 ? "image" : "images"}
+              ⧉ {mediaLabel}
             </button>
           )}
           <button

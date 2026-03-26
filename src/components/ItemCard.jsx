@@ -8,6 +8,9 @@ export default function ItemCard({
   isDragging, isOver,
   onEdit, onDelete, onGallery,
 }) {
+  const hasMedia = (item.images?.length > 0) || (item.videos?.length > 0);
+  const totalMedia = (item.images?.length || 0) + (item.videos?.length || 0);
+
   return (
     <div
       draggable
@@ -50,13 +53,18 @@ export default function ItemCard({
         </span>
 
         <div style={{ display: "flex", gap: 8 }}>
-          {item.images?.length > 0 && (
+          {hasMedia && (
             <button
               style={{ ...css.ghostBtn, fontSize: 12 }}
               onClick={(e) => { e.stopPropagation(); onGallery(); }}
-              title="View gallery"
+              title="View media"
             >
-              ⧉ {item.images.length} {item.images.length === 1 ? "image" : "images"}
+              ⧉ {totalMedia} {totalMedia === 1 ? "media" : "media"}
+              {item.images?.length > 0 && item.videos?.length > 0 && (
+                <span style={{ color: G.textDim, marginLeft: 4 }}>
+                  ({item.images.length} img · {item.videos.length} vid)
+                </span>
+              )}
             </button>
           )}
           <button
