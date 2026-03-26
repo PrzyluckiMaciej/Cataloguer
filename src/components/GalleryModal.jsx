@@ -17,6 +17,108 @@ function buildMediaList(item) {
   return list;
 }
 
+function FilmStrip({ media, idx, onSelect }) {
+  const stripRef      = useRef(null);
+  const activeRef     = useRef(null);
+  const dragOrigin    = useRef(null);   // { x, scrollLeft } at mousedown
+  const didDrag       = useRef(false);  // true if mouse moved enough to count as a drag
+
+  // Scroll active thumb into view whenever idx changes
+  useEffect(() => {
+    const strip = stripRef.current;
+    const thumb = activeRef.current;
+    if (!strip || !thumb) return;
+    const stripRect = strip.getBoundingClientRect();
+    const thumbRect = thumb.getBoundingClientRect();
+    const scrollLeft = strip.scrollLeft + thumbRect.left - stripRect.left
+      - stripRect.width / 2 + thumbRect.width / 2;
+    strip.scrollTo({ left: scrollLeft, behavior: "smooth" });
+  }, [idx]);
+
+  // Mouse-drag scrolling on the strip itself
+  const onStripMouseDown = (e) => {
+    e.preventDefault();
+    const strip = stripRef.current;
+    if (!strip) return;
+    dragOrigin.current = { x: e.clientX, scrollLeft: strip.scrollLeft };
+    didDrag.current = false;
+  };
+
+  const onStripMouseMove = (e) => {
+    if (!dragOrigin.current) return;
+    const dx = e.clientX - dragOrigin.current.x;
+    if (Math.abs(dx) > 4) {
+      didDrag.current = true;
+      stripRef.current.scrollLeft = dragOrigin.current.scrollLeft - dx;
+    }
+  };
+
+  const onStripMouseUp = () => { dragOrigin.current = null; };
+
+  const handleThumbClick = (i) => {
+    if (didDrag.current) return; // swallow click if user was scrolling
+    onSelect(i);
+  };
+
+  return (
+    <div
+      ref={stripRef}
+      onMouseDown={onStripMouseDown}
+      onMouseMove={onStripMouseMove}
+      onMouseUp={onStripMouseUp}
+      onMouseLeave={onStripMouseUp}
+      style={{
+        flexShrink: 0,
+        display: "flex", gap: 6, padding: "10px 16px",
+        overflowX: "auto",
+        borderTop: `1px solid ${G.border}`,
+        background: "rgba(0,0,0,0.8)",
+        scrollbarWidth: "none",
+        msOverflowStyle: "none",
+        cursor: "grab",
+        userSelect: "none",
+      }}
+    >
+      {media.map((m, i) => {
+        const vNorm   = m.type === "video" ? m : null;
+        const vParsed = vNorm?.kind !== "upload" ? parseVideoUrl(vNorm?.src) : null;
+        const isActive = i === idx;
+        return (
+          <div
+            key={i}
+            ref={isActive ? activeRef : null}
+            onClick={() => handleThumbClick(i)}
+            style={{
+              width: 60, height: 60, flexShrink: 0,
+              cursor: "pointer",
+              border: isActive ? `2px solid ${G.accent}` : `2px solid transparent`,
+              opacity: isActive ? 1 : 0.45,
+              transition: "opacity 0.15s, border-color 0.15s",
+              overflow: "hidden",
+              background: G.surfaceHigh,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            {m.type === "image" ? (
+              <img src={m.src} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ) : m.kind === "upload" ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                <span style={{ fontSize: 18, color: G.textMuted, lineHeight: 1 }}>▶</span>
+                <span style={{ fontSize: 9, color: G.textDim }}>FILE</span>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                <PlatformIcon platform={vParsed?.platform || "unknown"} size={18} />
+                <span style={{ fontSize: 9, color: G.textDim, textTransform: "capitalize" }}>{vParsed?.platform || "video"}</span>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function GalleryModal({ item, onClose }) {
   const media = buildMediaList(item);
 
@@ -247,48 +349,7 @@ export default function GalleryModal({ item, onClose }) {
 
       {/* Filmstrip */}
       {media.length > 1 && (
-        <div style={{
-          flexShrink: 0,
-          display: "flex", gap: 6, padding: "10px 16px",
-          overflowX: "auto", justifyContent: "center",
-          borderTop: `1px solid ${G.border}`,
-          background: "rgba(0,0,0,0.8)",
-        }}>
-          {media.map((m, i) => {
-            const vNorm   = m.type === "video" ? m : null;
-            const vParsed = vNorm?.kind !== "upload" ? parseVideoUrl(vNorm?.src) : null;
-            return (
-              <div
-                key={i}
-                onClick={() => { resetZoom(); setIdx(i); }}
-                style={{
-                  width: 60, height: 60, flexShrink: 0,
-                  cursor: "pointer",
-                  border: i === idx ? `2px solid ${G.accent}` : `2px solid transparent`,
-                  opacity: i === idx ? 1 : 0.45,
-                  transition: "opacity 0.15s, border-color 0.15s",
-                  overflow: "hidden",
-                  background: G.surfaceHigh,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}
-              >
-                {m.type === "image" ? (
-                  <img src={m.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                ) : m.kind === "upload" ? (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                    <span style={{ fontSize: 18, color: G.textMuted, lineHeight: 1 }}>▶</span>
-                    <span style={{ fontSize: 9, color: G.textDim }}>FILE</span>
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                    <PlatformIcon platform={vParsed?.platform || "unknown"} size={18} />
-                    <span style={{ fontSize: 9, color: G.textDim, textTransform: "capitalize" }}>{vParsed?.platform || "video"}</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <FilmStrip media={media} idx={idx} onSelect={(i) => { resetZoom(); setIdx(i); }} />
       )}
     </div>
   );
