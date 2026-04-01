@@ -5,12 +5,17 @@ import Modal from "./Modal";
 import ThumbnailCropper from "./ThumbnailCropper";
 import { parseVideoUrl, PlatformIcon } from "./VideoEmbed";
 
+// A video entry is either:
+//   { kind: "url",    src: "https://..." }
+//   { kind: "upload", src: "data:video/...", name: "filename.mp4" }
+// For backward compat, plain strings are treated as URLs.
 export function normalizeVideo(v) {
   if (typeof v === "string") return { kind: "url", src: v };
   return v;
 }
 
 const MAX_FILE_MB = 50;
+const WARN_IMAGE_MB = 40;
 
 export default function ItemFormModal({ item, listId, listItems = [], onSave, onClose }) {
   const [name, setName]           = useState(item?.name || "");
@@ -39,12 +44,17 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
 
   const handleImages = async (e) => {
     const files = Array.from(e.target.files);
-    const b64s  = await Promise.all(files.map(fileToBase64));
+    const oversized = files.filter((f) => f.size > WARN_IMAGE_MB * 1024 * 1024);
+    if (oversized.length) {
+      setVideoError(`${oversized.map((f) => f.name).join(", ")} ${oversized.length === 1 ? "is" : "are"} over ${WARN_IMAGE_MB} MB — this may exceed browser storage limits.`);
+    }
+    const b64s = await Promise.all(files.map(fileToBase64));
     setImages((prev) => [...prev, ...b64s]);
   };
 
   const removeImage = (i) => setImages((prev) => prev.filter((_, j) => j !== i));
 
+  // ── Video: URL ─────────────────────────────────────────────────────────────
   const addVideoUrl = () => {
     const url = videoInput.trim();
     if (!url) return;
@@ -65,6 +75,7 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
     if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); addVideoUrl(); }
   };
 
+  // ── Video: file upload ─────────────────────────────────────────────────────
   const handleVideoFiles = async (e) => {
     const files = Array.from(e.target.files);
     e.target.value = "";
@@ -81,6 +92,7 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
 
   const removeVideo = (i) => setVideos((prev) => prev.filter((_, j) => j !== i));
 
+  // ── Submit ─────────────────────────────────────────────────────────────────
   const submit = useCallback(() => {
     if (!name.trim()) return;
     const saved = {
@@ -88,7 +100,7 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
       name: name.trim(),
       thumbnail,
       images,
-      videos,
+      videos, // stored as array of { kind, src, name? }
       listId,
       order: item?.order,
     };

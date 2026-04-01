@@ -9,6 +9,7 @@ export default function App() {
   const {
     state, setState,
     activeTabId, activeListId, setActiveListId,
+    saveError, clearSaveError,
     switchTab,
     createTab, updateTab, deleteTab,
     createList, updateList, deleteList, duplicateList,
@@ -55,6 +56,13 @@ export default function App() {
         <div style={{ background: G.dangerDim, color: G.text, fontSize: 12, padding: "8px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           {importError}
           <button style={{ background: "none", border: "none", color: G.text, cursor: "pointer", fontSize: 13 }} onClick={clearImportError}>✕</button>
+        </div>
+      )}
+
+      {saveError && (
+        <div style={{ background: G.dangerDim, color: G.text, fontSize: 12, padding: "8px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          ⚠ {saveError}
+          <button style={{ background: "none", border: "none", color: G.text, cursor: "pointer", fontSize: 13 }} onClick={clearSaveError}>✕</button>
         </div>
       )}
 

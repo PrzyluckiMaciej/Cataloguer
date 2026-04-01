@@ -6,6 +6,7 @@ export function useAppState() {
   const [state, setState] = useState(null);
   const [activeTabId, setActiveTabId] = useState(null);
   const [activeListId, setActiveListId] = useState(null);
+  const [saveError, setSaveError] = useState(null);
   const saving = useRef(false);
   const persistTimer = useRef(null);
 
@@ -35,7 +36,16 @@ export function useAppState() {
     persistTimer.current = setTimeout(() => {
       if (saving.current) return;
       saving.current = true;
-      dbSet("appState", state).finally(() => { saving.current = false; });
+      dbSet("appState", state)
+          .catch((err) => {
+            const msg = err?.message || String(err);
+            if (msg.includes("too large") || msg.includes("structured clone")) {
+              setSaveError("Could not save — the data is too large for the browser's storage. Try removing large images or video files.");
+            } else {
+              setSaveError("Could not save changes. Your browser storage may be full.");
+            }
+          })
+          .finally(() => { saving.current = false; });
     }, 500);
     return () => clearTimeout(persistTimer.current);
   }, [state]);
@@ -123,6 +133,8 @@ export function useAppState() {
     activeTabId,
     activeListId,
     setActiveListId,
+    saveError,
+    clearSaveError: () => setSaveError(null),
     switchTab,
     createTab, updateTab, deleteTab,
     createList, updateList, deleteList, duplicateList,
