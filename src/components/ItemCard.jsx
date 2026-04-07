@@ -1,4 +1,5 @@
 import { G, css } from "../styles";
+import { useBlobUrl } from "../useAppState";
 
 const THUMB = 200;
 
@@ -10,6 +11,7 @@ export default function ItemCard({
 }) {
   const hasMedia = (item.images?.length > 0) || (item.videos?.length > 0);
   const totalMedia = (item.images?.length || 0) + (item.videos?.length || 0);
+  const { url: thumbUrl, loading: thumbLoading } = useBlobUrl(item.thumbnail);
 
   return (
     <div
@@ -38,17 +40,22 @@ export default function ItemCard({
       </div>
 
       {/* Thumbnail */}
-      {item.thumbnail && (
-        <img src={item.thumbnail} alt="" style={{ width: THUMB, height: THUMB, objectFit: "cover", flexShrink: 0, borderRight: `1px solid ${G.border}` }} />
+      {thumbUrl && !thumbLoading && (
+        <img 
+          key={thumbUrl} // This ensures the img element is recreated when URL changes
+          src={thumbUrl} 
+          alt="" 
+          style={{ width: THUMB, height: THUMB, objectFit: "cover", flexShrink: 0, borderRight: `1px solid ${G.border}` }} 
+        />
       )}
 
       {/* Info + actions */}
       <div style={{
         flex: 1, display: "flex", flexDirection: "column", justifyContent: "center",
-        padding: item.thumbnail ? "16px 18px" : "10px 18px",
+        padding: thumbUrl ? "16px 18px" : "10px 18px",
         minWidth: 0, gap: 8,
       }}>
-        <span style={{ fontSize: item.thumbnail ? 18 : 15, letterSpacing: "0.03em", lineHeight: 1.3, wordBreak: "break-word" }}>
+        <span style={{ fontSize: thumbUrl ? 18 : 15, letterSpacing: "0.03em", lineHeight: 1.3, wordBreak: "break-word" }}>
           {item.name}
         </span>
 

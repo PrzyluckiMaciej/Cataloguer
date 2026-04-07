@@ -7,9 +7,22 @@ import ItemFormModal from "./ItemFormModal";
 import ListFormModal from "./ListFormModal";
 import GalleryModal from "./GalleryModal";
 import ConfirmModal from "./ConfirmModal";
+import { useBlobUrl } from "../useAppState";
 
 const COL_OPTIONS = [2, 3, 4, 5, 6];
 const TIER_THUMB = 100; // thumbnail size for tiered list items
+
+function TierThumb({ src, size }) {
+  const { url } = useBlobUrl(src);
+  if (url) {
+    return <img src={url} alt="" style={{ width: size, height: size, objectFit: "cover", border: `1px solid ${G.border}` }} />;
+  }
+  return (
+    <div style={{ width: size, height: size, background: G.surfaceHigh, border: `1px solid ${G.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: G.textDim, fontSize: 9 }}>
+      IMG
+    </div>
+  );
+}
 
 function ViewToggle({ value, onChange }) {
   const btn = (mode, label, title) => (
@@ -291,10 +304,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
                       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleTierDrop(tier.id, i); }}
                       style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 8px", cursor: "grab" }}
                     >
-                      {item.thumbnail
-                        ? <img src={item.thumbnail} alt="" style={{ width: TIER_THUMB, height: TIER_THUMB, objectFit: "cover", border: `1px solid ${G.border}` }} />
-                        : <div style={{ width: TIER_THUMB, height: TIER_THUMB, background: G.surfaceHigh, border: `1px solid ${G.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: G.textDim, fontSize: 9 }}>IMG</div>
-                      }
+                      <TierThumb src={item.thumbnail} size={TIER_THUMB} />
                       <span style={{ fontSize: 10, color: G.textMuted, maxWidth: TIER_THUMB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>{item.name}</span>
                       <div style={{ display: "flex", gap: 2 }}>
                         {item.images?.length > 0 && (
@@ -364,10 +374,7 @@ export default function ListView({ list, items, onUpdate, onDelete, onItemCreate
                       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleTierDrop(null, i); }}
                       style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 8px", cursor: "grab", opacity: 0.85 }}
                     >
-                      {item.thumbnail
-                        ? <img src={item.thumbnail} alt="" style={{ width: TIER_THUMB, height: TIER_THUMB, objectFit: "cover", border: `1px solid ${G.border}` }} />
-                        : <div style={{ width: TIER_THUMB, height: TIER_THUMB, background: G.surfaceHigh, border: `1px solid ${G.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: G.textDim, fontSize: 9 }}>IMG</div>
-                      }
+                      <TierThumb src={item.thumbnail} size={TIER_THUMB} />
                       <span style={{ fontSize: 10, color: G.textMuted, maxWidth: TIER_THUMB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>{item.name}</span>
                       <div style={{ display: "flex", gap: 2 }}>
                         {item.images?.length > 0 && (

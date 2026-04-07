@@ -2,13 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { G } from "../styles";
 import Modal from "./Modal";
 import VideoEmbed, { parseVideoUrl, PlatformIcon } from "./VideoEmbed";
+import { useBlobUrl } from "../useAppState";
 
 function normalizeVideo(v) {
   if (typeof v === "string") return { kind: "url", src: v };
   return v;
 }
 
-// Build a unified media list: each entry is { type: "image"|"video", src, kind?, name? }
 function buildMediaList(item) {
   const list = [];
   (item.images || []).forEach((src) => list.push({ type: "image", src }));
@@ -16,11 +16,47 @@ function buildMediaList(item) {
   return list;
 }
 
+// Filmstrip thumbnail
+function StripThumb({ m, isActive, onClick }) {
+  const { url } = useBlobUrl(m.type === "image" ? m.src : (m.kind === "upload" ? m.src : null));
+  const vParsed = m.type === "video" && m.kind !== "upload" ? parseVideoUrl(m.src) : null;
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        width: 60, height: 60, flexShrink: 0,
+        cursor: "pointer",
+        border: isActive ? `2px solid ${G.accent}` : `2px solid transparent`,
+        opacity: isActive ? 1 : 0.45,
+        transition: "opacity 0.15s, border-color 0.15s",
+        overflow: "hidden",
+        background: G.surfaceHigh,
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+    >
+      {m.type === "image" ? (
+        url ? <img src={url} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : null
+      ) : m.kind === "upload" ? (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+          <span style={{ fontSize: 18, color: G.textMuted, lineHeight: 1 }}>▶</span>
+          <span style={{ fontSize: 9, color: G.textDim }}>FILE</span>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+          <PlatformIcon platform={vParsed?.platform || "unknown"} size={18} />
+          <span style={{ fontSize: 9, color: G.textDim, textTransform: "capitalize" }}>{vParsed?.platform || "video"}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FilmStrip({ media, idx, onSelect }) {
-  const stripRef      = useRef(null);
-  const activeRef     = useRef(null);
-  const dragOrigin    = useRef(null);
-  const didDrag       = useRef(false);
+  const stripRef   = useRef(null);
+  const activeRef  = useRef(null);
+  const dragOrigin = useRef(null);
+  const didDrag    = useRef(false);
 
   useEffect(() => {
     const strip = stripRef.current;
@@ -33,7 +69,6 @@ function FilmStrip({ media, idx, onSelect }) {
     strip.scrollTo({ left: scrollLeft, behavior: "smooth" });
   }, [idx]);
 
-  // Mouse-drag scrolling on the strip
   const onStripMouseDown = (e) => {
     e.preventDefault();
     const strip = stripRef.current;
@@ -52,11 +87,6 @@ function FilmStrip({ media, idx, onSelect }) {
   };
 
   const onStripMouseUp = () => { dragOrigin.current = null; };
-
-  const handleThumbClick = (i) => {
-    if (didDrag.current) return;
-    onSelect(i);
-  };
 
   return (
     <div
@@ -77,46 +107,60 @@ function FilmStrip({ media, idx, onSelect }) {
         userSelect: "none",
       }}
     >
-      {media.map((m, i) => {
-        const vNorm   = m.type === "video" ? m : null;
-        const vParsed = vNorm?.kind !== "upload" ? parseVideoUrl(vNorm?.src) : null;
-        const isActive = i === idx;
-        return (
-          <div
-            key={i}
-            ref={isActive ? activeRef : null}
-            onClick={() => handleThumbClick(i)}
-            style={{
-              width: 60, height: 60, flexShrink: 0,
-              cursor: "pointer",
-              border: isActive ? `2px solid ${G.accent}` : `2px solid transparent`,
-              opacity: isActive ? 1 : 0.45,
-              transition: "opacity 0.15s, border-color 0.15s",
-              overflow: "hidden",
-              background: G.surfaceHigh,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            {m.type === "image" ? (
-              <img src={m.src} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-            ) : m.kind === "upload" ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                <span style={{ fontSize: 18, color: G.textMuted, lineHeight: 1 }}>▶</span>
-                <span style={{ fontSize: 9, color: G.textDim }}>FILE</span>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                <PlatformIcon platform={vParsed?.platform || "unknown"} size={18} />
-                <span style={{ fontSize: 9, color: G.textDim, textTransform: "capitalize" }}>{vParsed?.platform || "video"}</span>
-              </div>
-            )}
-          </div>
-        );
-      })}
+      {media.map((m, i) => (
+        <div key={i} ref={i === idx ? activeRef : null}>
+          <StripThumb
+            m={m}
+            isActive={i === idx}
+            onClick={() => { if (!didDrag.current) onSelect(i); }}
+          />
+        </div>
+      ))}
     </div>
   );
 }
 
+// Main image viewer
+function BlobImg({ src, scale, position, isDragging, onRef }) {
+  const { url } = useBlobUrl(src);
+  if (!url) return null;
+  return (
+    <img
+      ref={onRef}
+      src={url}
+      alt=""
+      draggable={false}
+      style={{
+        maxWidth:  scale === 1 ? "100%" : "none",
+        maxHeight: scale === 1 ? "100%" : "none",
+        objectFit: "contain",
+        display: "block",
+        transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+        transition: isDragging ? "none" : "transform 0.1s ease-out",
+        pointerEvents: scale > 1 ? "auto" : "none",
+      }}
+    />
+  );
+}
+
+function BlobVideo({ src, name }) {
+  const { url } = useBlobUrl(src);
+  if (!url) return null;
+  return (
+    <video
+      src={url}
+      controls
+      style={{
+        maxWidth: "min(900px, 92vw)",
+        maxHeight: "80vh",
+        display: "block",
+        background: "#000",
+      }}
+    />
+  );
+}
+
+// GalleryModal
 export default function GalleryModal({ item, onClose }) {
   const media = buildMediaList(item);
 
@@ -129,12 +173,11 @@ export default function GalleryModal({ item, onClose }) {
   const imageContainerRef = useRef(null);
   const imageRef          = useRef(null);
 
-  const current = media[idx] || null;
+  const current  = media[idx] || null;
   const isVideo  = current?.type === "video";
   const isUpload = isVideo && current?.kind === "upload";
   const parsed   = isVideo && !isUpload ? parseVideoUrl(current.src) : null;
 
-  // Keyboard nav
   useEffect(() => {
     const handler = (e) => {
       if (e.key === "ArrowRight") { resetZoom(); setIdx((i) => (i + 1) % media.length); }
@@ -152,7 +195,6 @@ export default function GalleryModal({ item, onClose }) {
 
   const resetZoom = () => { setScale(1); setPosition({ x: 0, y: 0 }); };
 
-  // Zoom (image only)
   const handleWheel = (e) => {
     if (current?.type !== "image") return;
     e.preventDefault();
@@ -228,9 +270,7 @@ export default function GalleryModal({ item, onClose }) {
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           {isUpload && (
-            <span style={{ fontSize: 12, color: G.textDim }}>
-              {current.name || "Uploaded video"}
-            </span>
+            <span style={{ fontSize: 12, color: G.textDim }}>{current.name || "Uploaded video"}</span>
           )}
           {isVideo && !isUpload && parsed && (
             <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: G.textDim }}>
@@ -256,17 +296,13 @@ export default function GalleryModal({ item, onClose }) {
         </div>
       </div>
 
-      {/* Main content area */}
+      {/* Main content */}
       <div
         ref={imageContainerRef}
         style={{
-          flex: 1,
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-          minHeight: 0,
+          flex: 1, position: "relative",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          overflow: "hidden", minHeight: 0,
           cursor: (!isVideo && scale > 1) ? (isDragging ? "grabbing" : "grab") : "default",
         }}
         onWheel={!isVideo ? handleWheel : undefined}
@@ -277,41 +313,19 @@ export default function GalleryModal({ item, onClose }) {
         onDoubleClick={!isVideo ? resetZoom : undefined}
       >
         {isUpload ? (
-          /* Uploaded video file */
-          <video
-            key={current.src.slice(0, 64)}
-            src={current.src}
-            controls
-            style={{
-              maxWidth: "min(900px, 92vw)",
-              maxHeight: "80vh",
-              display: "block",
-              background: "#000",
-            }}
-          />
+          <BlobVideo src={current.src} name={current.name} />
         ) : isVideo ? (
-          /* Embedded URL video */
           <div style={{ width: "min(860px, 92vw)" }}>
             <VideoEmbed url={current.src} aspectRatio="16/9" />
           </div>
         ) : (
-          /* Image with zoom/pan */
           <>
-            <img
-              ref={imageRef}
-              key={idx}
+            <BlobImg
               src={current.src}
-              alt=""
-              draggable={false}
-              style={{
-                maxWidth:  scale === 1 ? "100%" : "none",
-                maxHeight: scale === 1 ? "100%" : "none",
-                objectFit: "contain",
-                display: "block",
-                transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
-                transition: isDragging ? "none" : "transform 0.1s ease-out",
-                pointerEvents: scale > 1 ? "auto" : "none",
-              }}
+              scale={scale}
+              position={position}
+              isDragging={isDragging}
+              onRef={(el) => { imageRef.current = el; }}
             />
             {scale === 1 && (
               <div style={{ position: "absolute", bottom: 20, right: 20, background: "rgba(0,0,0,0.6)", color: G.textMuted, fontSize: 11, padding: "4px 8px", borderRadius: 4, pointerEvents: "none", zIndex: 10 }}>
@@ -327,7 +341,7 @@ export default function GalleryModal({ item, onClose }) {
         )}
       </div>
 
-      {/* Navigation arrows */}
+      {/* Nav arrows */}
       {media.length > 1 && scale === 1 && (
         <>
           <button

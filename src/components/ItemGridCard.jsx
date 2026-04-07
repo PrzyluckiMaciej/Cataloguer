@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { G, css } from "../styles";
+import { useBlobUrl } from "../useAppState";
 
 export default function ItemGridCard({
   item, index, listType, rank,
@@ -8,6 +9,7 @@ export default function ItemGridCard({
   onEdit, onDelete, onGallery,
 }) {
   const [hovered, setHovered] = useState(false);
+  const { url: thumbUrl, loading: thumbLoading } = useBlobUrl(item.thumbnail);
 
   const hasMedia = (item.images?.length > 0) || (item.videos?.length > 0);
 
@@ -55,7 +57,7 @@ export default function ItemGridCard({
         </div>
       )}
 
-      {/* Video indicator badge (top-right) */}
+      {/* Video indicator badge */}
       {item.videos?.length > 0 && (
         <div style={{
           position: "absolute", top: 6, right: 6, zIndex: 2,
@@ -71,9 +73,20 @@ export default function ItemGridCard({
       )}
 
       {/* Thumbnail */}
-      {item.thumbnail ? (
+      {thumbLoading ? (
+        <div style={{ 
+          width: "100%", aspectRatio: "1 / 1", 
+          background: G.surfaceHigh,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: G.textDim, fontSize: 11, letterSpacing: "0.08em",
+          flexShrink: 0,
+        }}>
+          LOADING...
+        </div>
+      ) : thumbUrl ? (
         <img
-          src={item.thumbnail}
+          key={thumbUrl}
+          src={thumbUrl}
           alt=""
           style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", display: "block", flexShrink: 0 }}
         />
@@ -102,7 +115,7 @@ export default function ItemGridCard({
         {item.name}
       </div>
 
-      {/* Hover action overlay */}
+      {/* Hover overlay */}
       {hovered && (
         <div
           style={{

@@ -21,3 +21,12 @@ export function emptyState() {
     items: [],
   };
 }
+
+export function isBlobRef(src) {
+  return typeof src === "string" && src.startsWith("blob:") && !src.startsWith("blob:http");
+}
+
+export function makeBlobKey(type, itemId, index) {
+  // type: "thumb" | "img" | "vid"
+  return `blob:${type}:${itemId}:${index ?? uid()}`;
+}

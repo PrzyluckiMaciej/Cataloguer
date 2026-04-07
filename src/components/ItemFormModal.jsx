@@ -1,30 +1,37 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { G, css } from "../styles";
-import { uid, fileToBase64 } from "../helpers";
+import { uid, makeBlobKey } from "../helpers";
+import { dbSetBlob, dbGetBlob, base64ToBlob } from "../db";
 import Modal from "./Modal";
 import ThumbnailCropper from "./ThumbnailCropper";
 import { parseVideoUrl, PlatformIcon } from "./VideoEmbed";
+import { useBlobUrl } from "../useAppState";
 
-// A video entry is either:
-//   { kind: "url",    src: "https://..." }
-//   { kind: "upload", src: "data:video/...", name: "filename.mp4" }
-// For backward compat, plain strings are treated as URLs.
 export function normalizeVideo(v) {
   if (typeof v === "string") return { kind: "url", src: v };
   return v;
 }
 
-const MAX_FILE_MB = 50;
-const WARN_IMAGE_MB = 40;
+const MAX_FILE_MB = 200;
+const WARN_IMAGE_MB = 100;
+
+function BlobImage({ src, style, alt = "" }) {
+  const { url, loading } = useBlobUrl(src);
+  if (loading) return <div style={{ ...style, background: "#1f1f1f" }} />;
+  if (!url) return null;
+  return <img src={url} alt={alt} style={style} />;
+}
 
 export default function ItemFormModal({ item, listId, listItems = [], onSave, onClose }) {
-  const [name, setName]           = useState(item?.name || "");
-  const [thumbnail, setThumbnail] = useState(item?.thumbnail || null);
-  const [images, setImages]       = useState(item?.images || []);
-  const [videos, setVideos]       = useState(() => (item?.videos || []).map(normalizeVideo));
+  const itemId = useRef(item?.id || uid());
+
+  const [name, setName]             = useState(item?.name || "");
+  const [thumbnail, setThumbnail]   = useState(item?.thumbnail || null);
+  const [images, setImages]         = useState(item?.images || []);
+  const [videos, setVideos]         = useState(() => (item?.videos || []).map(normalizeVideo));
   const [videoInput, setVideoInput] = useState("");
   const [videoError, setVideoError] = useState("");
-  const [cropSrc, setCropSrc]     = useState(null);
+  const [cropSrc, setCropSrc]       = useState(null);
 
   const currentPos    = item != null ? (item.order ?? 0) + 1 : null;
   const [positionStr, setPositionStr] = useState(String(currentPos ?? ""));
@@ -34,27 +41,57 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
   const imgsRef   = useRef();
   const videosRef = useRef();
 
-  const handleThumb = async (e) => {
+  // Thumbnail
+  const handleThumb = (e) => {
     const f = e.target.files[0];
     if (!f) return;
-    const src = await fileToBase64(f);
-    setCropSrc(src);
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result);
+    reader.readAsDataURL(f);
     e.target.value = "";
   };
 
+  const handleCropDone = async (dataUrl) => {
+    const key = makeBlobKey("thumb", itemId.current);
+    await dbSetBlob(key, base64ToBlob(dataUrl));
+    setThumbnail(key);
+    setCropSrc(null);
+  };
+
+  const openCropperForExisting = useCallback(async () => {
+    if (!thumbnail) return;
+    if (thumbnail.startsWith("blob:") && !thumbnail.startsWith("blob:http")) {
+      const blob = await dbGetBlob(thumbnail);
+      if (!blob) return;
+      const reader = new FileReader();
+      reader.onload = () => setCropSrc(reader.result);
+      reader.readAsDataURL(blob);
+    } else {
+      setCropSrc(thumbnail);
+    }
+  }, [thumbnail]);
+
+  // Images
   const handleImages = async (e) => {
     const files = Array.from(e.target.files);
+    e.target.value = "";
     const oversized = files.filter((f) => f.size > WARN_IMAGE_MB * 1024 * 1024);
     if (oversized.length) {
-      setVideoError(`${oversized.map((f) => f.name).join(", ")} ${oversized.length === 1 ? "is" : "are"} over ${WARN_IMAGE_MB} MB — this may exceed browser storage limits.`);
+      setVideoError(`${oversized.map((f) => f.name).join(", ")} ${oversized.length === 1 ? "is" : "are"} over ${WARN_IMAGE_MB} MB — this may be slow.`);
     }
-    const b64s = await Promise.all(files.map(fileToBase64));
-    setImages((prev) => [...prev, ...b64s]);
+    const keys = await Promise.all(
+      files.map(async (f, i) => {
+        const key = makeBlobKey("img", itemId.current, `${Date.now()}-${i}`);
+        await dbSetBlob(key, f);
+        return key;
+      })
+    );
+    setImages((prev) => [...prev, ...keys]);
   };
 
   const removeImage = (i) => setImages((prev) => prev.filter((_, j) => j !== i));
 
-  // ── Video: URL ─────────────────────────────────────────────────────────────
+  // Video: URL
   const addVideoUrl = () => {
     const url = videoInput.trim();
     if (!url) return;
@@ -75,7 +112,7 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
     if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); addVideoUrl(); }
   };
 
-  // ── Video: file upload ─────────────────────────────────────────────────────
+  // Video: file upload
   const handleVideoFiles = async (e) => {
     const files = Array.from(e.target.files);
     e.target.value = "";
@@ -85,22 +122,26 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
     }
     const ok = files.filter((f) => f.size <= MAX_FILE_MB * 1024 * 1024);
     const entries = await Promise.all(
-      ok.map(async (f) => ({ kind: "upload", src: await fileToBase64(f), name: f.name }))
+      ok.map(async (f, i) => {
+        const key = makeBlobKey("vid", itemId.current, `${Date.now()}-${i}`);
+        await dbSetBlob(key, f);
+        return { kind: "upload", src: key, name: f.name };
+      })
     );
     if (entries.length) setVideos((prev) => [...prev, ...entries]);
   };
 
   const removeVideo = (i) => setVideos((prev) => prev.filter((_, j) => j !== i));
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
+  // Submit
   const submit = useCallback(() => {
     if (!name.trim()) return;
     const saved = {
-      id: item?.id || uid(),
+      id: itemId.current,
       name: name.trim(),
       thumbnail,
       images,
-      videos, // stored as array of { kind, src, name? }
+      videos,
       listId,
       order: item?.order,
     };
@@ -176,14 +217,17 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
           <div>
             <label style={css.label}>Thumbnail</label>
             {thumbnail && (
-              <img src={thumbnail} alt="" style={{ width: 80, height: 80, objectFit: "cover", display: "block", marginBottom: 8, border: `1px solid ${G.border}` }} />
+              <BlobImage
+                src={thumbnail}
+                style={{ width: 80, height: 80, objectFit: "cover", display: "block", marginBottom: 8, border: `1px solid ${G.border}` }}
+              />
             )}
             <button style={css.ghostBtn} onClick={() => thumbRef.current.click()}>
               {thumbnail ? "Replace" : "Upload thumbnail"}
             </button>
             {thumbnail && (
               <>
-                <button style={{ ...css.ghostBtn, marginLeft: 8 }} onClick={() => setCropSrc(thumbnail)}>Crop</button>
+                <button style={{ ...css.ghostBtn, marginLeft: 8 }} onClick={openCropperForExisting}>Crop</button>
                 <button style={{ ...css.ghostBtn, marginLeft: 8 }} onClick={() => setThumbnail(null)}>Remove</button>
               </>
             )}
@@ -196,7 +240,10 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
               {images.map((src, i) => (
                 <div key={i} style={{ position: "relative" }}>
-                  <img src={src} alt="" style={{ width: 60, height: 60, objectFit: "cover", border: `1px solid ${G.border}` }} />
+                  <BlobImage
+                    src={src}
+                    style={{ width: 60, height: 60, objectFit: "cover", border: `1px solid ${G.border}`, display: "block" }}
+                  />
                   <button
                     onClick={() => removeImage(i)}
                     style={{ position: "absolute", top: 0, right: 0, background: "rgba(0,0,0,0.8)", color: G.text, border: "none", width: 18, height: 18, cursor: "pointer", fontSize: 10, padding: 0 }}
@@ -212,7 +259,6 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
           <div>
             <label style={css.label}>Videos ({videos.length})</label>
 
-            {/* Existing video list */}
             {videos.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
                 {videos.map((v, i) => (
@@ -254,7 +300,7 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
               <button style={css.ghostBtn} onClick={addVideoUrl}>Add</button>
             </div>
 
-            {/* File upload button */}
+            {/* File upload */}
             <div style={{ marginTop: 8 }}>
               <button style={css.ghostBtn} onClick={() => videosRef.current.click()}>
                 Upload video file
@@ -287,7 +333,7 @@ export default function ItemFormModal({ item, listId, listItems = [], onSave, on
       {cropSrc && (
         <ThumbnailCropper
           imageSrc={cropSrc}
-          onCrop={(cropped) => { setThumbnail(cropped); setCropSrc(null); }}
+          onCrop={handleCropDone}
           onCancel={() => setCropSrc(null)}
         />
       )}
