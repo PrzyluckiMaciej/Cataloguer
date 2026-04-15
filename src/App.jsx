@@ -1,11 +1,21 @@
 import { G, css } from "./styles";
 import { useAppState } from "./useAppState";
+import { useDatabases } from "./usedatabases";
 import { useDataIO } from "./useDataIO";
 import TopBar from "./components/TopBar";
 import TabView from "./components/TabView";
 import CustomScrollbar from "./components/CustomScrollbar";
 
 export default function App() {
+  const {
+    databases,
+    activeDbId,
+    switchDatabase,
+    createDatabase,
+    renameDatabase,
+    deleteDatabase,
+  } = useDatabases();
+
   const {
     state, setState,
     activeTabId, activeListId, setActiveListId,
@@ -14,24 +24,32 @@ export default function App() {
     createTab, updateTab, deleteTab,
     createList, updateList, deleteList, duplicateList,
     createItem, updateItem, updateItems, deleteItem,
-  } = useAppState();
+  } = useAppState(activeDbId);
 
   const {
-    importRef, 
-    importError, 
+    importRef,
+    importError,
     importing,
     importProgress,
-    exporting, 
+    exporting,
     exportProgress,
-    handleExport, 
+    handleExport,
     cancelImport,
-    handleImport, 
-    clearImportError 
+    handleImport,
+    clearImportError,
   } = useDataIO(state, (parsed) => {
     setState(parsed);
     switchTab(parsed.tabs[0]?.id || null);
     setActiveListId(null);
   });
+
+  if (!databases || !activeDbId) {
+    return (
+      <div style={{ ...css.app, alignItems: "center", justifyContent: "center", fontSize: 13, color: G.textMuted }}>
+        Loading…
+      </div>
+    );
+  }
 
   if (!state) {
     return (
@@ -58,29 +76,23 @@ export default function App() {
         onExport={handleExport}
         onImport={handleImport}
         importRef={importRef}
+        databases={databases}
+        activeDbId={activeDbId}
+        onSwitchDb={switchDatabase}
+        onCreateDb={createDatabase}
+        onRenameDb={renameDatabase}
+        onDeleteDb={deleteDatabase}
       />
 
       {exporting && (
         <div style={{ background: G.surfaceHigh, color: G.textMuted, fontSize: 12, padding: "8px 24px", borderBottom: `1px solid ${G.border}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <span>↓ Exporting... {exportProgress.phase}</span>
-            {/* Removed cancel button here */}
           </div>
           {exportProgress.total > 0 && (
             <>
-              <div style={{ 
-                width: "100%", 
-                height: 4, 
-                background: G.border,
-                borderRadius: 2,
-                overflow: "hidden"
-              }}>
-                <div style={{ 
-                  width: `${(exportProgress.current / exportProgress.total) * 100}%`, 
-                  height: "100%", 
-                  background: G.accent,
-                  transition: "width 0.3s"
-                }} />
+              <div style={{ width: "100%", height: 4, background: G.border, borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ width: `${(exportProgress.current / exportProgress.total) * 100}%`, height: "100%", background: G.accent, transition: "width 0.3s" }} />
               </div>
               <div style={{ marginTop: 4, fontSize: 11 }}>
                 {exportProgress.current} / {exportProgress.total} items
@@ -94,26 +106,10 @@ export default function App() {
         <div style={{ background: G.surfaceHigh, color: G.textMuted, fontSize: 12, padding: "8px 24px", borderBottom: `1px solid ${G.border}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <span>↑ Importing... {importProgress.phase}</span>
-            <button 
-              onClick={cancelImport}
-              style={{ ...css.ghostBtn, fontSize: 11, padding: "2px 8px" }}
-            >
-              Cancel
-            </button>
+            <button onClick={cancelImport} style={{ ...css.ghostBtn, fontSize: 11, padding: "2px 8px" }}>Cancel</button>
           </div>
-          <div style={{ 
-            width: "100%", 
-            height: 4, 
-            background: G.border,
-            borderRadius: 2,
-            overflow: "hidden"
-          }}>
-            <div style={{ 
-              width: `${importProgress.percent}%`, 
-              height: "100%", 
-              background: G.accent,
-              transition: "width 0.3s"
-            }} />
+          <div style={{ width: "100%", height: 4, background: G.border, borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ width: `${importProgress.percent}%`, height: "100%", background: G.accent, transition: "width 0.3s" }} />
           </div>
           <div style={{ marginTop: 4, fontSize: 11 }}>
             {importProgress.itemsProcessed > 0 && `${importProgress.itemsProcessed} items processed`}

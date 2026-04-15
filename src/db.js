@@ -1,5 +1,5 @@
 const DB_NAME = "CataloguerApp";
-const DB_VERSION = 2; // bumped to add "blobs" object store
+const DB_VERSION = 2;
 let dbInstance = null;
 
 function openDB() {
@@ -35,6 +35,16 @@ export async function dbSet(key, value) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction("store", "readwrite");
     const req = tx.objectStore("store").put(value, key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function dbDelete(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("store", "readwrite");
+    const req = tx.objectStore("store").delete(key);
     req.onsuccess = () => resolve();
     req.onerror = () => reject(req.error);
   });
@@ -80,6 +90,50 @@ export async function dbGetAllBlobKeys() {
   });
 }
 
+const DATABASES_META_KEY = "__databases__";
+const ACTIVE_DB_KEY = "__activeDb__";
+
+export async function dbGetDatabases() {
+  const list = await dbGet(DATABASES_META_KEY);
+  if (list && list.length > 0) return list;
+  const legacy = await dbGet("appState");
+  const first = { id: "default", name: "My Collection", createdAt: Date.now() };
+  const databases = [first];
+  await dbSet(DATABASES_META_KEY, databases);
+  if (legacy) {
+    await dbSet(`appState:${first.id}`, legacy);
+  }
+  return databases;
+}
+
+export async function dbSetDatabases(databases) {
+  return dbSet(DATABASES_META_KEY, databases);
+}
+
+export async function dbGetActiveDbId() {
+  return (await dbGet(ACTIVE_DB_KEY)) || "default";
+}
+
+export async function dbSetActiveDbId(id) {
+  return dbSet(ACTIVE_DB_KEY, id);
+}
+
+export async function dbGetState(dbId) {
+  // Try namespaced key first, then fall back to legacy
+  const namespaced = await dbGet(`appState:${dbId}`);
+  if (namespaced) return namespaced;
+  if (dbId === "default") return dbGet("appState");
+  return null;
+}
+
+export async function dbSetState(dbId, state) {
+  return dbSet(`appState:${dbId}`, state);
+}
+
+export async function dbDeleteDatabase(dbId) {
+  await dbDelete(`appState:${dbId}`);
+}
+
 export function base64ToBlob(dataUrl) {
   const [header, data] = dataUrl.split(",");
   const mime = header.match(/:(.*?);/)[1];
@@ -111,14 +165,12 @@ export async function migrateStateToBlobs(state) {
     state.items.map(async (item) => {
       let { thumbnail, images = [], videos = [] } = item;
 
-      // Thumbnail
       if (thumbnail && thumbnail.startsWith("data:")) {
         const blobKey = `blob:thumb:${item.id}`;
         await dbSetBlob(blobKey, base64ToBlob(thumbnail));
         thumbnail = blobKey;
       }
 
-      // Images
       images = await Promise.all(
         images.map(async (src, i) => {
           if (typeof src === "string" && src.startsWith("data:")) {
@@ -130,7 +182,6 @@ export async function migrateStateToBlobs(state) {
         })
       );
 
-      // Uploaded videos
       videos = await Promise.all(
         videos.map(async (v, i) => {
           if (typeof v === "object" && v.kind === "upload" && v.src?.startsWith("data:")) {

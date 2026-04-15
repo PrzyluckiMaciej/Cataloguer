@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { dbGet, dbSet, dbSetBlob, dbDeleteBlob, dbGetAllBlobKeys, migrateStateToBlobs, blobToBase64, dbGetBlob } from "./db";
+import {
+  dbGetState, dbSetState, dbGetBlob, dbSetBlob, dbDeleteBlob, dbGetAllBlobKeys,
+  migrateStateToBlobs, blobToBase64,
+} from "./db";
 import { uid, emptyState, isBlobRef, makeBlobKey } from "./helpers";
 
 export function useBlobUrl(src) {
@@ -11,9 +14,7 @@ export function useBlobUrl(src) {
 
   useEffect(() => {
     isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
+    return () => { isMounted.current = false; };
   }, []);
 
   useEffect(() => {
@@ -25,50 +26,24 @@ export function useBlobUrl(src) {
       prevUrl.current = null;
     }
 
-    if (!src) {
-      setUrl(null);
-      setLoading(false);
-      return;
-    }
-    
-    if (!isBlobRef(src)) {
-      setUrl(src);
-      setLoading(false);
-      return;
-    }
+    if (!src) { setUrl(null); setLoading(false); return; }
+    if (!isBlobRef(src)) { setUrl(src); setLoading(false); return; }
 
     setLoading(true);
-    
     const loadBlob = async () => {
       try {
         const blob = await dbGetBlob(src);
         if (!isMounted.current) return;
-        
-        if (!blob) {
-          console.warn(`Blob not found for key: ${src}`);
-          setUrl(null);
-          setLoading(false);
-          return;
-        }
-        
+        if (!blob) { setUrl(null); setLoading(false); return; }
         const objUrl = URL.createObjectURL(blob);
-        if (!isMounted.current) {
-          URL.revokeObjectURL(objUrl);
-          return;
-        }
-        
+        if (!isMounted.current) { URL.revokeObjectURL(objUrl); return; }
         prevUrl.current = objUrl;
         setUrl(objUrl);
         setLoading(false);
       } catch (error) {
-        console.error(`Error loading blob ${src}:`, error);
-        if (isMounted.current) {
-          setUrl(null);
-          setLoading(false);
-        }
+        if (isMounted.current) { setUrl(null); setLoading(false); }
       }
     };
-    
     loadBlob();
   }, [src]);
 
@@ -96,25 +71,18 @@ async function validateBlobRefs(state) {
     state.items.map(async (item) => {
       let needsUpdate = false;
       const updatedItem = { ...item };
-      
+
       if (item.thumbnail && isBlobRef(item.thumbnail)) {
         const blob = await dbGetBlob(item.thumbnail);
-        if (!blob) {
-          updatedItem.thumbnail = null;
-          needsUpdate = true;
-        }
+        if (!blob) { updatedItem.thumbnail = null; needsUpdate = true; }
       }
-      
+
       if (item.images) {
         const validatedImages = await Promise.all(
           item.images.map(async (src) => {
             if (isBlobRef(src)) {
               const blob = await dbGetBlob(src);
-              if (!blob) {
-                needsUpdate = true;
-                return null;
-              }
-              return src;
+              if (!blob) { needsUpdate = true; return null; }
             }
             return src;
           })
@@ -122,17 +90,13 @@ async function validateBlobRefs(state) {
         updatedItem.images = validatedImages.filter(Boolean);
         if (validatedImages.length !== item.images.length) needsUpdate = true;
       }
-      
+
       if (item.videos) {
         const validatedVideos = await Promise.all(
           item.videos.map(async (v) => {
             if (v?.kind === "upload" && isBlobRef(v.src)) {
               const blob = await dbGetBlob(v.src);
-              if (!blob) {
-                needsUpdate = true;
-                return null;
-              }
-              return v;
+              if (!blob) { needsUpdate = true; return null; }
             }
             return v;
           })
@@ -140,18 +104,18 @@ async function validateBlobRefs(state) {
         updatedItem.videos = validatedVideos.filter(Boolean);
         if (validatedVideos.length !== item.videos.length) needsUpdate = true;
       }
-      
+
       return needsUpdate ? updatedItem : item;
     })
   );
-  
+
   if (items.some((item, i) => item !== state.items[i])) {
     return { ...state, items };
   }
   return state;
 }
 
-export function useAppState() {
+export function useAppState(activeDbId) {
   const [state, setState] = useState(null);
   const [activeTabId, setActiveTabId] = useState(null);
   const [activeListId, setActiveListId] = useState(null);
@@ -160,14 +124,18 @@ export function useAppState() {
   const persistTimer = useRef(null);
 
   useEffect(() => {
-    dbGet("appState")
+    if (!activeDbId) return;
+    setState(null);
+    setActiveTabId(null);
+    setActiveListId(null);
+
+    dbGetState(activeDbId)
       .then(async (saved) => {
         if (saved) {
           const validatedState = await validateBlobRefs(saved);
           const migrated = await migrateStateToBlobs(validatedState);
-          
           if (migrated !== saved) {
-            await dbSet("appState", migrated).catch(() => {});
+            await dbSetState(activeDbId, migrated).catch(() => {});
           }
           setState(migrated);
           setActiveTabId(migrated.tabs[0]?.id || null);
@@ -182,15 +150,15 @@ export function useAppState() {
         setState(s);
         setActiveTabId(s.tabs[0].id);
       });
-  }, []);
+  }, [activeDbId]);
 
   useEffect(() => {
-    if (!state) return;
+    if (!state || !activeDbId) return;
     if (persistTimer.current) clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
       if (saving.current) return;
       saving.current = true;
-      dbSet("appState", state)
+      dbSetState(activeDbId, state)
         .catch((err) => {
           const msg = err?.message || String(err);
           if (msg.includes("too large") || msg.includes("structured clone")) {
@@ -202,7 +170,7 @@ export function useAppState() {
         .finally(() => { saving.current = false; });
     }, 500);
     return () => clearTimeout(persistTimer.current);
-  }, [state]);
+  }, [state, activeDbId]);
 
   const update = useCallback((fn) => setState((prev) => fn(prev)), []);
 
@@ -219,7 +187,6 @@ export function useAppState() {
     );
   }, []);
 
-  // ── Tab CRUD ──────────────────────────────────────────────────────────────
   const createTab = (name) => {
     const tab = { id: uid(), name };
     update((s) => ({ ...s, tabs: [...s.tabs, tab] }));
@@ -314,7 +281,6 @@ export function useAppState() {
     })();
   };
 
-  // ── Item CRUD ─────────────────────────────────────────────────────────────
   const createItem = (item) =>
     update((s) => ({ ...s, items: [...s.items, item] }));
 
